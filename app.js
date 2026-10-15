@@ -37,8 +37,8 @@
     if (savedTally) {
       try {
         state.candidateTally = JSON.parse(savedTally);
-        // Reseed if old fictional candidates are stored
-        if (!state.candidateTally['nominee-ogidi-omolola']) {
+        // Reseed if older version without composite category keys
+        if (!state.candidateTally['staff-of-the-year__nominee-ogidi-omolola']) {
           seedDefaultTally();
           state.userVotes = {};
           saveVotes();
@@ -72,8 +72,11 @@
   function seedDefaultTally() {
     state.candidateTally = {};
     window.VOTING_DATA.categories.forEach(cat => {
-      cat.nominees.forEach(nom => {
-        state.candidateTally[nom.id] = nom.votes || Math.floor(Math.random() * 80 + 100);
+      cat.nominees.forEach((nom, idx) => {
+        // Seed unique, distributed baseline votes per category and nominee
+        const variance = Math.abs(Math.sin(cat.number * 4.3 + (idx + 1) * 7.1));
+        const baseline = Math.floor(variance * 65) + 18;
+        state.candidateTally[`${cat.id}__${nom.id}`] = baseline;
       });
     });
     saveTally();
@@ -224,7 +227,14 @@
   }
 
   // --- 5. Candidate & Category Lookups ---
-  function getCandidate(nomineeId) {
+  function getCandidate(nomineeId, categoryId = null) {
+    if (categoryId) {
+      const targetCat = window.VOTING_DATA.categories.find(c => c.id === categoryId);
+      if (targetCat) {
+        const match = targetCat.nominees.find(n => n.id === nomineeId);
+        if (match) return { candidate: match, category: targetCat };
+      }
+    }
     for (const cat of window.VOTING_DATA.categories) {
       const match = cat.nominees.find(n => n.id === nomineeId);
       if (match) return { candidate: match, category: cat };
@@ -234,19 +244,42 @@
 
   // --- 6. Render Functions ---
 
-  // 6.1 Category Tab Buttons
+  // 6.1 Category Tab Buttons & Quick Jump Dropdown
   function renderCategoryTabs() {
     const container = document.getElementById('categoryTabsBar');
-    if (!container) return;
-
+    const quickSelect = document.getElementById('categoryQuickSelect');
     const categories = window.VOTING_DATA.categories;
     const totalCategories = categories.length;
     const votedCount = Object.keys(state.userVotes).length;
 
+    // Populate Quick Select Dropdown
+    if (quickSelect) {
+      let optHtml = `<option value="all" ${state.activeCategory === 'all' ? 'selected' : ''}>★ All 15 Award Categories</option>`;
+      categories.forEach(cat => {
+        const isVoted = !!state.userVotes[cat.id];
+        optHtml += `<option value="${cat.id}" ${state.activeCategory === cat.id ? 'selected' : ''}>
+          Category ${cat.number}: ${cat.name} ${isVoted ? '✓ (Voted)' : ''}
+        </option>`;
+      });
+      quickSelect.innerHTML = optHtml;
+
+      if (!quickSelect.dataset.hasListener) {
+        quickSelect.dataset.hasListener = 'true';
+        quickSelect.addEventListener('change', (e) => {
+          playSound('click');
+          state.activeCategory = e.target.value;
+          renderCategoryTabs();
+          renderVotingSections();
+        });
+      }
+    }
+
+    if (!container) return;
+
     let html = `
       <button class="category-tab-btn ${state.activeCategory === 'all' ? 'active' : ''}" data-cat-id="all">
         <i class="fa-solid fa-layer-group"></i>
-        <span>All Categories</span>
+        <span>All 15 Categories</span>
         <span class="category-tab-badge">${totalCategories}</span>
       </button>
     `;
@@ -257,7 +290,7 @@
       html += `
         <button class="category-tab-btn ${isActive ? 'active' : ''}" data-cat-id="${cat.id}">
           <i class="${cat.icon}"></i>
-          <span>${cat.shortName}</span>
+          <span>${cat.number}. ${cat.shortName}</span>
           ${isVoted 
             ? `<span class="category-status-indicator" title="Vote Cast for this category"><i class="fa-solid fa-circle-check"></i> Voted</span>` 
             : `<span class="category-tab-badge">${cat.nominees.length}</span>`}
@@ -337,7 +370,7 @@
       const isCatVoted = !!userVoteInCat;
 
       // Calculate total votes in this category for bar width
-      const totalCatVotes = cat.nominees.reduce((acc, nom) => acc + (state.candidateTally[nom.id] || 0), 0);
+      const totalCatVotes = cat.nominees.reduce((acc, nom) => acc + (state.candidateTally[`${cat.id}__${nom.id}`] || 0), 0);
 
       html += `
         <section class="category-section-block" id="category-block-${cat.id}">
@@ -345,7 +378,7 @@
             <div class="category-header-main">
               <h2>
                 <i class="${cat.icon}" style="color: var(--gold-primary);"></i>
-                ${cat.name}
+                Category ${cat.number}: ${cat.name}
               </h2>
               <p>${cat.description}</p>
             </div>
@@ -357,12 +390,12 @@
 
           <div class="nominees-grid">
             ${nominees.map(nom => {
-              const currentTally = state.candidateTally[nom.id] || 0;
-              const percent = totalCatVotes > 0 ? Math.round((currentTally / totalCatVotes) * 100) : 50;
+              const currentTally = state.candidateTally[`${cat.id}__${nom.id}`] || 0;
+              const percent = totalCatVotes > 0 ? Math.round((currentTally / totalCatVotes) * 100) : 0;
               const isVotedForThis = isCatVoted && userVoteInCat.nomineeId === nom.id;
 
               return `
-                <article class="nominee-card ${isVotedForThis ? 'voted-for' : ''}" id="card-${nom.id}">
+                <article class="nominee-card ${isVotedForThis ? 'voted-for' : ''}" id="card-${cat.id}-${nom.id}">
                   <div class="nominee-media-frame">
                     <div class="nominee-badges-bar">
                       <span class="nominee-dept-badge">${nom.department}</span>
@@ -380,13 +413,28 @@
                     <div class="nominee-role">${nom.role}</div>
                     <p class="nominee-tagline">${nom.tagline}</p>
 
+                    <!-- Award Category & Criteria under each nominee -->
+                    <div class="nominee-award-category-banner">
+                      <div class="award-badge">
+                        <i class="${cat.icon}"></i>
+                        <span>Category ${cat.number}: ${cat.name}</span>
+                      </div>
+                      <p class="award-desc">${cat.description}</p>
+                    </div>
+
                     <div class="nominee-metrics-row">
-                      ${nom.stats.map(s => `
-                        <div class="metric-chip">
-                          <span class="metric-value">${s.value}</span>
-                          <span class="metric-label">${s.label}</span>
-                        </div>
-                      `).join('')}
+                      <div class="metric-chip">
+                        <span class="metric-value">Verified</span>
+                        <span class="metric-label">Status</span>
+                      </div>
+                      <div class="metric-chip">
+                        <span class="metric-value">${nom.tenure}</span>
+                        <span class="metric-label">Cadre</span>
+                      </div>
+                      <div class="metric-chip">
+                        <span class="metric-value">SEC/NGX</span>
+                        <span class="metric-label">Compliant</span>
+                      </div>
                     </div>
 
                     <div class="card-vote-standing">
@@ -398,7 +446,7 @@
                     </div>
 
                     <div class="nominee-actions-group" style="margin-top: 1.4rem;">
-                      <button class="btn-secondary view-bio-btn" data-nominee-id="${nom.id}">
+                      <button class="btn-secondary view-bio-btn" data-nominee-id="${nom.id}" data-cat-id="${cat.id}">
                         <i class="fa-regular fa-id-card"></i>
                         <span>Bio & Dossier</span>
                       </button>
@@ -433,7 +481,7 @@
     container.querySelectorAll('.view-bio-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         playSound('dialog');
-        openBioModal(btn.dataset.nomineeId);
+        openBioModal(btn.dataset.nomineeId, btn.dataset.catId);
       });
     });
 
@@ -487,11 +535,11 @@
     `;
 
     categories.forEach(cat => {
-      const totalCatVotes = cat.nominees.reduce((acc, n) => acc + (state.candidateTally[n.id] || 0), 0);
+      const totalCatVotes = cat.nominees.reduce((acc, n) => acc + (state.candidateTally[`${cat.id}__${n.id}`] || 0), 0);
       
-      // Sort nominees descending by votes
+      // Sort nominees descending by votes in THIS category
       const sortedNominees = [...cat.nominees].sort((a, b) => {
-        return (state.candidateTally[b.id] || 0) - (state.candidateTally[a.id] || 0);
+        return (state.candidateTally[`${cat.id}__${b.id}`] || 0) - (state.candidateTally[`${cat.id}__${a.id}`] || 0);
       });
 
       const leader = sortedNominees[0];
@@ -499,17 +547,22 @@
       html += `
         <div class="category-result-card">
           <div class="category-result-header">
-            <h3>
-              <i class="${cat.icon}" style="color: var(--gold-primary);"></i>
-              ${cat.name}
-            </h3>
+            <div>
+              <h3>
+                <i class="${cat.icon}" style="color: var(--gold-primary);"></i>
+                Category ${cat.number}: ${cat.name}
+              </h3>
+              <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 4px;">
+                ${cat.description}
+              </p>
+            </div>
             <span class="total-category-votes">Total Ballots Cast: <strong>${totalCatVotes.toLocaleString()}</strong></span>
           </div>
 
           <div class="candidates-result-breakdown">
             ${sortedNominees.map((nom, idx) => {
-              const tally = state.candidateTally[nom.id] || 0;
-              const percent = totalCatVotes > 0 ? ((tally / totalCatVotes) * 100).toFixed(1) : 0;
+              const tally = state.candidateTally[`${cat.id}__${nom.id}`] || 0;
+              const percent = totalCatVotes > 0 ? ((tally / totalCatVotes) * 100).toFixed(1) : '0.0';
               const isLeader = idx === 0 && tally > 0;
 
               return `
@@ -548,7 +601,7 @@
 
   // 7.1 Vote Confirmation Dialog
   function openVoteConfirmation(categoryId, nomineeId) {
-    const data = getCandidate(nomineeId);
+    const data = getCandidate(nomineeId, categoryId);
     if (!data) return;
 
     state.selectedForVote = { categoryId, nomineeId };
@@ -567,7 +620,9 @@
     }
     if (nameEl) nameEl.textContent = candidate.name;
     if (roleEl) roleEl.textContent = `${candidate.role} (${candidate.department})`;
-    if (catNameEl) catNameEl.textContent = category.name;
+    if (catNameEl) {
+      catNameEl.innerHTML = `<strong>Category ${category.number}: ${category.name}</strong><br><span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary);">${category.description}</span>`;
+    }
     if (voterInput) voterInput.value = state.currentVoterId;
 
     if (dialog && typeof dialog.showModal === 'function') {
@@ -578,7 +633,7 @@
   function submitConfirmedVote() {
     if (!state.selectedForVote) return;
     const { categoryId, nomineeId } = state.selectedForVote;
-    const data = getCandidate(nomineeId);
+    const data = getCandidate(nomineeId, categoryId);
     if (!data) return;
 
     const voterIdInput = document.getElementById('voteConfirmVoterId');
@@ -601,12 +656,16 @@
 
     // Check if voter had already voted in this category to adjust tally accurately
     const previousVote = state.userVotes[categoryId];
-    if (previousVote && state.candidateTally[previousVote.nomineeId] > 0) {
-      state.candidateTally[previousVote.nomineeId] -= 1;
+    if (previousVote) {
+      const prevKey = `${categoryId}__${previousVote.nomineeId}`;
+      if (state.candidateTally[prevKey] > 0) {
+        state.candidateTally[prevKey] -= 1;
+      }
     }
 
-    // Increment selected candidate's tally
-    state.candidateTally[nomineeId] = (state.candidateTally[nomineeId] || 0) + 1;
+    // Increment selected candidate's tally for this specific category
+    const voteKey = `${categoryId}__${nomineeId}`;
+    state.candidateTally[voteKey] = (state.candidateTally[voteKey] || 0) + 1;
     saveTally();
 
     // Record user vote
@@ -619,7 +678,7 @@
     state.userVotes[categoryId] = {
       nomineeId,
       nomineeName: data.candidate.name,
-      categoryName: data.category.name,
+      categoryName: `Category ${data.category.number}: ${data.category.name}`,
       timestamp,
       ballotHash,
       voterId
@@ -631,7 +690,7 @@
       ballotHash,
       voterId,
       categoryId,
-      categoryName: data.category.name,
+      categoryName: `Category ${data.category.number}: ${data.category.name}`,
       candidateId: nomineeId,
       candidateName: data.candidate.name,
       timestamp: new Date().toISOString()
@@ -645,7 +704,7 @@
     // Audio & Confetti Celebration
     playSound('success');
     fireConfetti();
-    showToast(`Ballot cast successfully for ${data.candidate.name}!`);
+    showToast(`Ballot cast successfully for ${data.candidate.name} in Category ${data.category.number}!`);
 
     // Refresh displays
     renderCategoryTabs();
@@ -682,8 +741,8 @@
   }
 
   // 7.3 Candidate Bio Dossier Modal
-  function openBioModal(nomineeId) {
-    const data = getCandidate(nomineeId);
+  function openBioModal(nomineeId, categoryId = null) {
+    const data = getCandidate(nomineeId, categoryId);
     if (!data) return;
 
     const { candidate, category } = data;
@@ -702,7 +761,9 @@
     }
     if (nameEl) nameEl.textContent = candidate.name;
     if (roleEl) roleEl.textContent = `${candidate.role} • ${candidate.department}`;
-    if (catBadgeEl) catBadgeEl.textContent = category.name;
+    if (catBadgeEl) {
+      catBadgeEl.innerHTML = `<i class="${category.icon}"></i> Category ${category.number}: ${category.name} &mdash; <em>${category.description}</em>`;
+    }
     if (bioTextEl) bioTextEl.textContent = candidate.bio;
 
     if (achievementsList) {
@@ -775,19 +836,20 @@
         playSound('click');
         window.VOTING_DATA.categories.forEach(cat => {
           cat.nominees.forEach(nom => {
-            state.candidateTally[nom.id] = (state.candidateTally[nom.id] || 0) + Math.floor(Math.random() * 25 + 5);
+            const key = `${cat.id}__${nom.id}`;
+            state.candidateTally[key] = (state.candidateTally[key] || 0) + Math.floor(Math.random() * 15 + 4);
           });
         });
         saveTally();
         renderVotingSections();
         renderLiveResults();
-        showToast('Injected 100+ simulated audited ballots!');
+        showToast('Injected simulated audited ballots across all 15 categories!');
       });
     }
 
     if (btnReset) {
       btnReset.addEventListener('click', () => {
-        if (confirm('Reset your local ballot selections and restore default sample counts?')) {
+        if (confirm('Reset your local ballot selections and restore default sample counts across all 15 categories?')) {
           playSound('click');
           state.userVotes = {};
           saveVotes();
@@ -803,20 +865,22 @@
     if (btnExport) {
       btnExport.addEventListener('click', () => {
         playSound('click');
-        let csv = 'Category ID,Category Name,Nominee ID,Nominee Name,Department,Total Votes\n';
+        let csv = 'Category ID,Category Number,Category Name,Category Criteria,Nominee ID,Nominee Name,Department,Role,Total Votes\n';
         window.VOTING_DATA.categories.forEach(cat => {
           cat.nominees.forEach(nom => {
-            csv += `"${cat.id}","${cat.name}","${nom.id}","${nom.name}","${nom.department}",${state.candidateTally[nom.id] || 0}\n`;
+            const key = `${cat.id}__${nom.id}`;
+            const votes = state.candidateTally[key] || 0;
+            csv += `"${cat.id}",${cat.number},"${cat.name}","${cat.description}","${nom.id}","${nom.name}","${nom.department}","${nom.role}",${votes}\n`;
           });
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Regency_Assets_Management_Election_Results_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = `Regency_Assets_Management_15_Categories_Results_${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast('Audited voting tally exported to CSV!');
+        showToast('Audited 15-category voting tally exported to CSV!');
       });
     }
 

@@ -236,7 +236,7 @@
           </div>
           <div class="progress-text-group">
             <h3>Your Ballot Completion</h3>
-            <p id="ballotVotedCount">0 of 4 Categories Voted</p>
+            <p id="ballotVotedCount">0 of 15 Categories Voted</p>
           </div>
         </div>
 
@@ -248,6 +248,22 @@
           <div class="progress-meter-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
             <div class="progress-meter-fill" id="ballotProgressFill" style="width: 0%;"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- Category Header Row with Quick Jump Select & Count Pill -->
+      <div class="category-nav-header-row">
+        <span class="category-counter-pill">
+          <i class="fa-solid fa-award"></i>
+          <span>15 Official Award Categories</span>
+        </span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label for="categoryQuickSelect" style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 600;">
+            <i class="fa-solid fa-arrow-down-short-wide" style="color: var(--gold-primary);"></i> Jump to Category:
+          </label>
+          <select id="categoryQuickSelect" class="category-dropdown-select" aria-label="Jump directly to category">
+            <!-- Populated via app.js -->
+          </select>
         </div>
       </div>
 
