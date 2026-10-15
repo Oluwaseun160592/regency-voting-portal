@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Regency Assets Management Limited | Corporate Excellence Awards Voting Portal</title>
+  
+  <meta name="description" content="Official electronic voting portal for the Regency Assets Management Limited Corporate Excellence & Leadership Awards. Vote for Deal Maker, Wealth Manager, Research Analyst, and Operations Champions." />
+  <meta name="keywords" content="Regency Assets Management Limited, RAML, Voting Site, Corporate Awards, Capital Markets, Asset Management Nigeria, NGX, NASD, Wealth Management" />
+  <meta name="author" content="Regency Assets Management Limited" />
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/regency_logo.png" />
+  
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+  
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- =========================================================================
+       1. Live Market Ticker Header Bar
+       ========================================================================= -->
+  <aside class="market-ticker-bar" aria-label="Capital Market Ticker">
+    <div class="ticker-label">
+      <i class="fa-solid fa-chart-line" style="margin-right: 5px;"></i> Market Live
+    </div>
+    <div class="ticker-track">
+      <div class="ticker-item">
+        <span class="ticker-symbol">NGX ASI:</span>
+        <span>104,285.40</span>
+        <span class="ticker-up"><i class="fa-solid fa-caret-up"></i> +1.24%</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-symbol">RAML BALANCED FUND:</span>
+        <span>₦3.85 NAV</span>
+        <span class="ticker-up"><i class="fa-solid fa-caret-up"></i> +2.45%</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-symbol">RAML ETHICAL FUND:</span>
+        <span>₦2.42 NAV</span>
+        <span class="ticker-up"><i class="fa-solid fa-caret-up"></i> +1.80%</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-symbol">DANGCEM:</span>
+        <span>₦710.00</span>
+        <span class="ticker-up"><i class="fa-solid fa-caret-up"></i> +0.71%</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-symbol">MTNN:</span>
+        <span>₦284.50</span>
+        <span class="ticker-up"><i class="fa-solid fa-caret-up"></i> +1.52%</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-symbol">GTCO:</span>
+        <span>₦49.20</span>
+        <span class="ticker-up"><i class="fa-solid fa-caret-up"></i> +2.15%</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-symbol">ZENITHBANK:</span>
+        <span>₦43.10</span>
+        <span class="ticker-down"><i class="fa-solid fa-caret-down"></i> -0.23%</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-symbol">NASD OTC INDEX:</span>
+        <span>1,240.18</span>
+        <span class="ticker-up"><i class="fa-solid fa-caret-up"></i> +0.65%</span>
+      </div>
+      <!-- Duplicate set for seamless looping -->
+      <div class="ticker-item">
+        <span class="ticker-symbol">NGX ASI:</span>
+        <span>104,285.40</span>
+        <span class="ticker-up"><i class="fa-solid fa-caret-up"></i> +1.24%</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-symbol">RAML BALANCED FUND:</span>
+        <span>₦3.85 NAV</span>
+        <span class="ticker-up"><i class="fa-solid fa-caret-up"></i> +2.45%</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-symbol">RAML ETHICAL FUND:</span>
+        <span>₦2.42 NAV</span>
+        <span class="ticker-up"><i class="fa-solid fa-caret-up"></i> +1.80%</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- =========================================================================
+       2. Main Navigation Header with Official Brand Identity
+       ========================================================================= -->
+  <header class="site-header" role="banner">
+    <div class="header-container">
+      
+      <!-- Brand Logo & Institutional Tagline -->
+      <a href="#" class="brand-lockup" id="brandLogoLink" title="Regency Assets Management Limited">
+        <div class="brand-logo-frame">
+          <img src="assets/regency_logo.png" alt="Regency Assets Management Limited Official Logo" class="brand-logo-img" />
+        </div>
+        <div class="brand-info">
+          <h1 class="brand-company-name">
+            Regency Assets Management
+          </h1>
+          <div class="brand-subtext">
+            <span>Trading Licence Holder of NGX Ltd & Dealing Member of NASD</span>
+            <span class="regulatory-badge"><i class="fa-solid fa-shield-check"></i> SEC Regulated</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Header Controls & Views -->
+      <nav class="header-actions" aria-label="Portal Navigation">
+        <!-- Switch between Ballot & Live Results -->
+        <div class="nav-view-switch" role="tablist">
+          <button class="view-btn active" id="viewBallotBtn" role="tab" aria-selected="true">
+            <i class="fa-solid fa-check-to-slot"></i>
+            <span>Cast Ballot</span>
+          </button>
+          <button class="view-btn" id="viewResultsBtn" role="tab" aria-selected="false">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>Live Results</span>
+          </button>
+        </div>
+
+        <!-- Voter ID Status Pill -->
+        <div class="voter-identity-pill" id="voterIdentityPill" title="Click to view or switch voter credentials">
+          <span class="voter-badge-dot"></span>
+          <span id="voterIdentityDisplay">Voter: RAML-8821</span>
+          <i class="fa-solid fa-chevron-down" style="font-size: 0.65rem; color: var(--text-muted);"></i>
+        </div>
+
+        <!-- Theme Toggle -->
+        <button class="icon-action-btn" id="themeToggleBtn" title="Toggle Theme (Dark/Light)" aria-label="Toggle Theme">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+
+        <!-- Audio Sound Toggle -->
+        <button class="icon-action-btn" id="audioToggleBtn" title="Toggle Audio Sound Chimes" aria-label="Toggle Audio">
+          <i class="fa-solid fa-volume-high"></i>
+        </button>
+
+        <!-- Admin / Demo Drawer Trigger -->
+        <button class="icon-action-btn" id="adminPanelBtn" title="Election Controls & Demo Settings" aria-label="Demo Settings">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+      </nav>
+
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       3. Grand Hero Banner Section
+       ========================================================================= -->
+  <main id="mainContent">
+    <section class="hero-section" aria-labelledby="heroHeading">
+      <div class="hero-card">
+        <img src="assets/banner.jpg" alt="Regency Annual Awards Gala" class="hero-bg-img" />
+        <div class="hero-overlay"></div>
+        
+        <div class="hero-content">
+          <div class="hero-ribbon">
+            <i class="fa-solid fa-award"></i> Annual Corporate Excellence Awards
+          </div>
+          
+          <h2 class="hero-title" id="heroHeading">
+            Honoring Distinction, Integrity & Leadership
+          </h2>
+          
+          <p class="hero-description">
+            Cast your official electronic vote for the leaders, portfolio managers, analysts, and operations champions shaping capital markets and wealth creation at Regency Assets Management Limited.
+          </p>
+
+          <div class="hero-meta-row">
+            <!-- Real-time Countdown Box -->
+            <div class="countdown-box" aria-label="Voting Deadline Countdown">
+              <div class="countdown-label">
+                <i class="fa-regular fa-clock" style="margin-right: 4px;"></i> Voting Closes
+              </div>
+              <div class="countdown-timer">
+                <div class="countdown-segment">
+                  <span class="countdown-num" id="timerDays">03</span>
+                  <span class="countdown-unit">Days</span>
+                </div>
+                <span class="countdown-sep">:</span>
+                <div class="countdown-segment">
+                  <span class="countdown-num" id="timerHours">14</span>
+                  <span class="countdown-unit">Hours</span>
+                </div>
+                <span class="countdown-sep">:</span>
+                <div class="countdown-segment">
+                  <span class="countdown-num" id="timerMins">28</span>
+                  <span class="countdown-unit">Mins</span>
+                </div>
+                <span class="countdown-sep">:</span>
+                <div class="countdown-segment">
+                  <span class="countdown-num" id="timerSecs">45</span>
+                  <span class="countdown-unit">Secs</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Participation Stat -->
+            <div class="hero-participation">
+              <div class="hero-stat-item">
+                <span class="hero-stat-value" id="heroTotalVotes">1,180</span>
+                <span class="hero-stat-label">Total Authenticated Votes</span>
+              </div>
+              <div style="width: 1px; height: 32px; background: var(--border-subtle);"></div>
+              <div class="hero-stat-item">
+                <span class="hero-stat-value" style="color: var(--emerald);">SEC Compliant</span>
+                <span class="hero-stat-label">Immutable Audit Trail</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =======================================================================
+         4. Category Navigation, Voter Progress & Search
+         ======================================================================= -->
+    <section class="ballot-controls-wrapper" aria-label="Ballot Category Controls">
+      
+      <!-- Progress Bar Card -->
+      <div class="ballot-progress-card">
+        <div class="progress-info">
+          <div class="progress-icon">
+            <i class="fa-solid fa-list-check"></i>
+          </div>
+          <div class="progress-text-group">
+            <h3>Your Ballot Completion</h3>
+            <p id="ballotVotedCount">0 of 4 Categories Voted</p>
+          </div>
+        </div>
+
+        <div class="progress-meter-container">
+          <div class="progress-meter-header">
+            <span style="color: var(--text-secondary);">Voting Status</span>
+            <span style="color: var(--gold-light);" id="ballotProgressPercent">0% Complete</span>
+          </div>
+          <div class="progress-meter-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-meter-fill" id="ballotProgressFill" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Filter Tabs -->
+      <div class="category-tabs-bar" id="categoryTabsBar" role="tablist" aria-label="Award Categories">
+        <!-- Injected via app.js -->
+      </div>
+
+      <!-- Search & Quick Filter Toolbar -->
+      <div class="search-filter-toolbar">
+        <div class="search-box-wrapper">
+          <i class="fa-solid fa-magnifying-glass search-box-icon"></i>
+          <input 
+            type="search" 
+            class="search-input" 
+            id="nomineeSearchInput" 
+            placeholder="Search candidates by name, role, or department..." 
+            aria-label="Search candidates"
+          />
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-secondary);">
+          <i class="fa-solid fa-circle-info" style="color: var(--gold-primary);"></i>
+          <span>Click <strong>Bio & Dossier</strong> to review track records before voting.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- =======================================================================
+         5. Main Nominees Voting Container (Dynamic)
+         ======================================================================= -->
+    <main class="voting-main-container" id="votingMainContainer">
+      <!-- Injected via app.js with Category blocks and Candidate Cards -->
+    </main>
+
+    <!-- =======================================================================
+         6. Live Results Dashboard View (Hidden by default, toggled via header)
+         ======================================================================= -->
+    <section class="voting-main-container live-results-section" id="liveResultsSection" aria-label="Live Voting Results">
+      <div id="liveResultsContainer">
+        <!-- Injected via app.js -->
+      </div>
+    </section>
+  </main>
+
+  <!-- =========================================================================
+       7. Native Dialog Modals (Accessible HTML5 <dialog>)
+       ========================================================================= -->
+
+  <!-- 7.1 Confirm Vote Dialog -->
+  <dialog id="voteDialog" aria-labelledby="voteDialogTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i class="fa-solid fa-check-to-slot" style="color: var(--gold-primary); font-size: 1.2rem;"></i>
+          <h3 id="voteDialogTitle">Confirm Your Ballot</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Close dialog">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="vote-confirm-preview">
+          <div class="vote-preview-avatar" id="voteConfirmAvatar">OA</div>
+          <div class="vote-preview-meta">
+            <h4 id="voteConfirmName">Ogidi A. Omolola, ACS</h4>
+            <p id="voteConfirmRole">Deputy Managing Director</p>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+              Category: <strong style="color: var(--text-primary);" id="voteConfirmCatName">Executive & Strategic Leadership Award</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="voter-auth-box">
+          <label for="voteConfirmVoterId">Authenticated Voter / Staff ID</label>
+          <input type="text" id="voteConfirmVoterId" class="voter-id-input-field" placeholder="e.g. RAML-8821" />
+          <div class="anti-fraud-notice">
+            <i class="fa-solid fa-shield-halved" style="color: var(--emerald); font-size: 0.9rem; margin-top: 2px;"></i>
+            <span>One official vote permitted per authenticated ID per category. Your cryptographic receipt will be recorded to the immutable ledger.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary modal-cancel-btn">
+          Cancel
+        </button>
+        <button type="button" class="btn-primary-vote" id="confirmVoteBtn">
+          <i class="fa-solid fa-stamp"></i>
+          <span>Confirm & Cast Vote</span>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 7.2 Official Digital Ballot Receipt Dialog -->
+  <dialog id="receiptDialog" aria-labelledby="receiptDialogTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i class="fa-solid fa-receipt" style="color: var(--emerald); font-size: 1.2rem;"></i>
+          <h3 id="receiptDialogTitle">Digital Voting Receipt</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Close dialog">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="official-receipt-sheet" id="printableReceipt">
+          <img src="assets/regency_logo.png" alt="" class="receipt-watermark" />
+          
+          <div class="receipt-header">
+            <div class="receipt-brand-title">
+              <h4>Regency Assets Management Limited</h4>
+              <p>Corporate Excellence Awards • Official Verification Slip</p>
+            </div>
+            <div class="receipt-seal-badge">
+              <i class="fa-solid fa-seal-exclamation"></i> Verified
+            </div>
+          </div>
+
+          <table class="receipt-table">
+            <tbody>
+              <tr>
+                <td>Category</td>
+                <td id="receiptCategoryName">Deal Maker of the Year</td>
+              </tr>
+              <tr>
+                <td>Nominee Selected</td>
+                <td id="receiptCandidateName" style="color: #0b1a30;">Kojo Adebayo, FCA</td>
+              </tr>
+              <tr>
+                <td>Authenticated Voter ID</td>
+                <td id="receiptVoterId">RAML-8821</td>
+              </tr>
+              <tr>
+                <td>Timestamp (WAT)</td>
+                <td id="receiptTimestamp">Oct 15, 2026, 11:42 AM</td>
+              </tr>
+              <tr>
+                <td>Security Protocol</td>
+                <td>SHA-256 / SEC Compliant</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="receipt-hash-box">
+            <span>Cryptographic Ballot Transaction Hash</span>
+            <div class="receipt-hash-code" id="receiptHashCode">RAML-7F89-A42E-9901-K5</div>
+          </div>
+
+          <div class="receipt-qr-area">
+            <div>
+              <div style="font-size: 0.75rem; font-weight: 700; color: #0f172a;">Audit Verification Token</div>
+              <div style="font-size: 0.68rem; color: #64748b;">Scan with compliance reader to verify ledger signature</div>
+            </div>
+            <!-- Simulated QR code pattern -->
+            <div class="receipt-qr-sim" aria-hidden="true">
+              <div class="qr-cell filled"></div><div class="qr-cell"></div><div class="qr-cell filled"></div><div class="qr-cell filled"></div>
+              <div class="qr-cell filled"></div><div class="qr-cell filled"></div><div class="qr-cell"></div><div class="qr-cell filled"></div>
+              <div class="qr-cell"></div><div class="qr-cell filled"></div><div class="qr-cell filled"></div><div class="qr-cell"></div>
+              <div class="qr-cell filled"></div><div class="qr-cell"></div><div class="qr-cell filled"></div><div class="qr-cell filled"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="printReceiptBtn">
+          <i class="fa-solid fa-print"></i>
+          <span>Print / Save Slip</span>
+        </button>
+        <button type="button" class="btn-primary-vote modal-close-btn">
+          <i class="fa-solid fa-check"></i>
+          <span>Done</span>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 7.3 Candidate Bio Dossier Dialog -->
+  <dialog id="bioDialog" aria-labelledby="bioName">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i class="fa-solid fa-address-card" style="color: var(--gold-primary);"></i>
+          <h3>Nominee Profile & Achievements</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Close dialog">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="bio-hero-block">
+          <div class="bio-portrait" id="bioAvatar">OA</div>
+          <div>
+            <h3 id="bioName" style="font-size: 1.45rem; margin-bottom: 3px;">Ogidi A. Omolola, ACS</h3>
+            <div id="bioRole" style="color: var(--gold-light); font-weight: 600; font-size: 0.9rem; margin-bottom: 6px;">Deputy Managing Director</div>
+            <span class="nominee-dept-badge" id="bioCatBadge">Executive Management</span>
+          </div>
+        </div>
+
+        <h4 style="font-size: 1rem; margin-bottom: 6px;">Executive Bio</h4>
+        <p id="bioText" style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.5rem;">
+          Bio details will populate here.
+        </p>
+
+        <h4 style="font-size: 1rem; margin-bottom: 6px;">Key Landmark Milestones</h4>
+        <ul class="bio-achievements-list" id="bioAchievementsList">
+          <!-- Populated dynamically -->
+        </ul>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary modal-close-btn">
+          Close Dossier
+        </button>
+        <button type="button" class="btn-primary-vote" id="bioVoteActionBtn">
+          <i class="fa-solid fa-check-to-slot"></i>
+          <span>Vote for Candidate</span>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 7.4 Switch Voter ID Credentials Modal -->
+  <dialog id="voterLoginDialog" aria-labelledby="voterLoginTitle">
+    <div class="modal-card" style="width: 500px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i class="fa-solid fa-user-shield" style="color: var(--gold-primary);"></i>
+          <h3 id="voterLoginTitle">Select / Authenticate Voter</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Close dialog">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+          Select one of the sample voter profiles or enter your official Staff / CSCS Investor ID to test multi-user ballot casting.
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button class="admin-btn preset-voter-chip" data-voter-id="RAML-1001">
+            <span><strong>RAML-1001</strong> • Executive Board Rep</span>
+            <i class="fa-solid fa-chevron-right" style="font-size: 0.75rem;"></i>
+          </button>
+          <button class="admin-btn preset-voter-chip" data-voter-id="RAML-2045">
+            <span><strong>RAML-2045</strong> • Investment Banking Desk</span>
+            <i class="fa-solid fa-chevron-right" style="font-size: 0.75rem;"></i>
+          </button>
+          <button class="admin-btn preset-voter-chip" data-voter-id="RAML-3108">
+            <span><strong>RAML-3108</strong> • Institutional Dealing Desk</span>
+            <i class="fa-solid fa-chevron-right" style="font-size: 0.75rem;"></i>
+          </button>
+          <button class="admin-btn preset-voter-chip" data-voter-id="RAML-4092">
+            <span><strong>RAML-4092</strong> • Private Wealth Client Voter</span>
+            <i class="fa-solid fa-chevron-right" style="font-size: 0.75rem;"></i>
+          </button>
+          <button class="admin-btn preset-voter-chip" data-voter-id="RAML-8821">
+            <span><strong>RAML-8821</strong> • Operations & IT Voter (Default)</span>
+            <i class="fa-solid fa-chevron-right" style="font-size: 0.75rem;"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary modal-close-btn">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 7.5 Admin Controls & Demo Drawer -->
+  <dialog id="adminDialog" aria-labelledby="adminDialogTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i class="fa-solid fa-sliders" style="color: var(--gold-primary);"></i>
+          <h3 id="adminDialogTitle">Election Organizer Controls</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Close dialog">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+          Quick testing utilities for election administrators and committee reviewers.
+        </p>
+
+        <div class="admin-action-row">
+          <button class="admin-btn" id="adminSimulateVotesBtn">
+            <span><i class="fa-solid fa-users" style="margin-right: 8px; color: var(--gold-light);"></i> Simulate 100+ Staff Votes</span>
+            <i class="fa-solid fa-bolt"></i>
+          </button>
+
+          <button class="admin-btn" id="adminExportCsvBtn">
+            <span><i class="fa-solid fa-file-csv" style="margin-right: 8px; color: var(--emerald);"></i> Export Results Ledger (CSV)</span>
+            <i class="fa-solid fa-download"></i>
+          </button>
+
+          <button class="admin-btn" id="adminToggleStatusBtn">
+            <span><i class="fa-solid fa-lock" style="margin-right: 8px; color: var(--amber);"></i> Election Status: OPEN</span>
+            <i class="fa-solid fa-toggle-on"></i>
+          </button>
+
+          <button class="admin-btn danger" id="adminResetAllBtn">
+            <span><i class="fa-solid fa-rotate-left" style="margin-right: 8px;"></i> Reset Ballots & Restore Defaults</span>
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary modal-close-btn">
+          Close Settings
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Canvas Confetti Overlay -->
+  <canvas id="confettiCanvas" aria-hidden="true"></canvas>
+
+  <!-- Floating Toast Notification -->
+  <div class="toast-notice" id="toastNotice" role="status" aria-live="polite">
+    <i class="fa-solid fa-circle-check"></i>
+    <span>Vote cast successfully!</span>
+  </div>
+
+  <!-- =========================================================================
+       8. Official Institutional Footer
+       ========================================================================= -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-container">
+      <div class="footer-top-grid">
+        
+        <div class="footer-brand-summary">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="brand-logo-frame" style="width: 44px; height: 44px;">
+              <img src="assets/regency_logo.png" alt="Regency Logo" class="brand-logo-img" />
+            </div>
+            <strong style="font-family: var(--font-display); font-size: 1.15rem; color: #ffffff;">
+              Regency Assets Management Limited
+            </strong>
+          </div>
+          <p>
+            Licensed by the Securities and Exchange Commission (SEC) as a Broker/Dealer and Issuing House. Active Trading Licence Holder of The Nigerian Exchange Group (NGX) and Dealing Member of the NASD OTC Securities Exchange.
+          </p>
+          <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);">
+            <i class="fa-solid fa-location-dot" style="color: var(--gold-primary); margin-right: 6px;"></i>
+            63 Norman Williams Street, Off Awolowo Road (Keffi Bus Stop), Ikoyi, Lagos, Nigeria
+          </div>
+        </div>
+
+        <div class="footer-links-col">
+          <h4>Award Categories</h4>
+          <ul>
+            <li><a href="#category-block-executive-leadership">Executive & Strategic Leadership</a></li>
+            <li><a href="#category-block-business-growth">Business Development & Research</a></li>
+            <li><a href="#category-block-tech-operations">Technology & Operations</a></li>
+            <li><a href="#category-block-governance-client-delight">Governance & Client Care</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links-col">
+          <h4>Corporate Portals</h4>
+          <ul>
+            <li><a href="https://regencyng.net" target="_blank" rel="noopener">Official Corporate Website</a></li>
+            <li><a href="https://regencyngonline.net" target="_blank" rel="noopener">Client Trading Portal</a></li>
+            <li><a href="https://regencyng.net/services-wealth.php" target="_blank" rel="noopener">Wealth Management</a></li>
+            <li><a href="https://regencyng.net/services-portfolio.php" target="_blank" rel="noopener">Portfolio Solutions</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links-col">
+          <h4>Direct Enquiries</h4>
+          <ul>
+            <li><a href="mailto:info@regencyng.net"><i class="fa-solid fa-envelope" style="margin-right: 6px;"></i> info@regencyng.net</a></li>
+            <li><a href="tel:02014540251"><i class="fa-solid fa-phone" style="margin-right: 6px;"></i> 0201-454-0251</a></li>
+            <li><a href="tel:09037043410"><i class="fa-solid fa-mobile" style="margin-right: 6px;"></i> 0903-704-3410</a></li>
+            <li><span style="color: var(--emerald); font-size: 0.75rem;"><i class="fa-solid fa-circle-check"></i> SEC Regulated Broker/Dealer</span></li>
+          </ul>
+        </div>
+
+      </div>
+
+      <div class="footer-bottom-bar">
+        <div>
+          &copy; 2026 Regency Assets Management Limited. All Rights Reserved. Electronic Voting & Tally Governance Portal.
+        </div>
+        <div style="display: flex; gap: 1.5rem;">
+          <a href="#">Privacy Policy</a>
+          <a href="#">Voting Charter</a>
+          <a href="#">Auditor Independence</a>
+          <a href="#">NGX Compliance</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="candidates.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "regency-voting-portal",
+  "version": "1.0.0",
+  "description": "Electronic Voting Portal for Regency Assets Management Limited Corporate Excellence Awards",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve -s . -l $PORT",
+    "dev": "http-server -p 8080",
+    "build": "echo 'Build complete'"
+  },
+  "dependencies": {
+    "serve": "^14.2.4"
+  },
+  "author": "Regency Assets Management Limited",
+  "license": "UNLICENSED"
+}
