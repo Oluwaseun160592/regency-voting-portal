@@ -50,14 +50,7 @@
       seedDefaultTally();
     }
 
-    const savedVotes = localStorage.getItem(STORAGE_KEYS.VOTES);
-    if (savedVotes) {
-      try {
-        state.userVotes = JSON.parse(savedVotes);
-      } catch (e) {
-        state.userVotes = {};
-      }
-    }
+    loadVotesForCurrentVoter();
 
     const savedAudit = localStorage.getItem(STORAGE_KEYS.AUDIT);
     if (savedAudit) {
@@ -65,6 +58,34 @@
         state.auditLog = JSON.parse(savedAudit);
       } catch (e) {
         state.auditLog = [];
+      }
+    }
+  }
+
+  function getVoterVotesStorageKey(voterId) {
+    return `${STORAGE_KEYS.VOTES}_${voterId || state.currentVoterId}`;
+  }
+
+  function loadVotesForCurrentVoter() {
+    const key = getVoterVotesStorageKey(state.currentVoterId);
+    const savedVotes = localStorage.getItem(key);
+    if (savedVotes) {
+      try {
+        state.userVotes = JSON.parse(savedVotes);
+      } catch (e) {
+        state.userVotes = {};
+      }
+    } else {
+      // Legacy fallback
+      const legacyVotes = localStorage.getItem(STORAGE_KEYS.VOTES);
+      if (legacyVotes && state.currentVoterId === 'RAML-8821') {
+        try {
+          state.userVotes = JSON.parse(legacyVotes);
+        } catch (e) {
+          state.userVotes = {};
+        }
+      } else {
+        state.userVotes = {};
       }
     }
   }
@@ -87,7 +108,21 @@
   }
 
   function saveVotes() {
+    const key = getVoterVotesStorageKey(state.currentVoterId);
+    localStorage.setItem(key, JSON.stringify(state.userVotes));
     localStorage.setItem(STORAGE_KEYS.VOTES, JSON.stringify(state.userVotes));
+  }
+
+  function switchVoter(newVoterId) {
+    if (!newVoterId) return;
+    saveVotes();
+    state.currentVoterId = newVoterId;
+    localStorage.setItem(STORAGE_KEYS.VOTER_ID, newVoterId);
+    loadVotesForCurrentVoter();
+    updateVoterPill();
+    renderCategoryTabs();
+    renderVotingSections();
+    showToast(`Authenticated as ${newVoterId}`);
   }
 
   function saveAuditLog() {
@@ -242,6 +277,17 @@
     return null;
   }
 
+  // Check if current voter has already voted for this nominee in any category
+  function getVotedCategoryForNominee(nomineeId) {
+    for (const [catId, voteData] of Object.entries(state.userVotes)) {
+      if (voteData && voteData.nomineeId === nomineeId) {
+        const cat = window.VOTING_DATA.categories.find(c => c.id === catId);
+        return { categoryId: catId, category: cat, voteData };
+      }
+    }
+    return null;
+  }
+
   // --- 6. Render Functions ---
 
   // 6.1 Category Tab Buttons & Quick Jump Dropdown
@@ -392,16 +438,22 @@
             ${nominees.map(nom => {
               const currentTally = state.candidateTally[`${cat.id}__${nom.id}`] || 0;
               const percent = totalCatVotes > 0 ? Math.round((currentTally / totalCatVotes) * 100) : 0;
-              const isVotedForThis = isCatVoted && userVoteInCat.nomineeId === nom.id;
+              const existingVoteForNom = getVotedCategoryForNominee(nom.id);
+              const isVotedForThisInThisCat = isCatVoted && userVoteInCat.nomineeId === nom.id;
+              const isVotedForThisInOtherCat = existingVoteForNom && existingVoteForNom.categoryId !== cat.id;
 
               return `
-                <article class="nominee-card ${isVotedForThis ? 'voted-for' : ''}" id="card-${cat.id}-${nom.id}">
+                <article class="nominee-card ${isVotedForThisInThisCat ? 'voted-for' : ''} ${isVotedForThisInOtherCat ? 'locked-nominee' : ''}" id="card-${cat.id}-${nom.id}">
                   <div class="nominee-media-frame">
                     <div class="nominee-badges-bar">
                       <span class="nominee-dept-badge">${nom.department}</span>
-                      ${isVotedForThis 
+                      ${isVotedForThisInThisCat 
                         ? `<span class="nominee-voted-badge"><i class="fa-solid fa-circle-check"></i> Your Vote</span>`
-                        : `<span class="nominee-dept-badge" style="border-color: rgba(255,255,255,0.15);">${nom.tenure}</span>`}
+                        : (isVotedForThisInOtherCat
+                            ? `<span class="nominee-locked-badge" title="Already selected in Category ${existingVoteForNom.category.number}: ${existingVoteForNom.category.name}"><i class="fa-solid fa-lock"></i> Voted in Cat ${existingVoteForNom.category.number}</span>`
+                            : `<span class="nominee-dept-badge" style="border-color: rgba(255,255,255,0.15);">${nom.tenure}</span>`
+                          )
+                      }
                     </div>
                     <div class="nominee-crest-badge ${nom.badgeColor || 'gold'}">
                       <span class="crest-initials-text">${nom.initials}</span>
@@ -451,19 +503,35 @@
                         <span>Bio & Dossier</span>
                       </button>
 
-                      ${isVotedForThis 
+                      ${isVotedForThisInThisCat 
                         ? `
                           <button class="btn-voted-status view-receipt-btn" data-cat-id="${cat.id}">
                             <i class="fa-solid fa-receipt"></i>
                             <span>View Ballot</span>
                           </button>
                         `
-                        : `
-                          <button class="btn-primary-vote vote-action-btn" data-cat-id="${cat.id}" data-nominee-id="${nom.id}" ${state.electionStatus === 'closed' ? 'disabled' : ''}>
-                            <i class="fa-solid fa-check-to-slot"></i>
-                            <span>${isCatVoted ? 'Change Vote' : 'Vote Now'}</span>
-                          </button>
-                        `
+                        : (isVotedForThisInOtherCat
+                            ? `
+                              <button class="btn-disabled-vote" disabled title="You have already cast your vote for ${nom.name} in Category ${existingVoteForNom.category.number} (${existingVoteForNom.category.shortName}). Each nominee can only be voted for in one category.">
+                                <i class="fa-solid fa-lock"></i>
+                                <span>Voted in Cat ${existingVoteForNom.category.number}</span>
+                              </button>
+                            `
+                            : (isCatVoted
+                                ? `
+                                  <button class="btn-secondary-vote vote-action-btn" data-cat-id="${cat.id}" data-nominee-id="${nom.id}" ${state.electionStatus === 'closed' ? 'disabled' : ''} title="Change your vote in this category to ${nom.name}">
+                                    <i class="fa-solid fa-arrows-rotate"></i>
+                                    <span>Change Vote</span>
+                                  </button>
+                                `
+                                : `
+                                  <button class="btn-primary-vote vote-action-btn" data-cat-id="${cat.id}" data-nominee-id="${nom.id}" ${state.electionStatus === 'closed' ? 'disabled' : ''}>
+                                    <i class="fa-solid fa-check-to-slot"></i>
+                                    <span>Vote Now</span>
+                                  </button>
+                                `
+                              )
+                          )
                       }
                     </div>
                   </div>
@@ -604,8 +672,16 @@
     const data = getCandidate(nomineeId, categoryId);
     if (!data) return;
 
-    state.selectedForVote = { categoryId, nomineeId };
     const { candidate, category } = data;
+
+    // Strict validation: Has this voter already voted for this nominee in another category?
+    const existingVote = getVotedCategoryForNominee(nomineeId);
+    if (existingVote && existingVote.categoryId !== categoryId) {
+      showToast(`Rule: You already voted for ${candidate.name} in Category ${existingVote.category.number}. Each nominee can only be voted for in one category.`, 'fa-solid fa-lock');
+      return;
+    }
+
+    state.selectedForVote = { categoryId, nomineeId };
 
     const dialog = document.getElementById('voteDialog');
     const avatarEl = document.getElementById('voteConfirmAvatar');
@@ -636,6 +712,13 @@
     const data = getCandidate(nomineeId, categoryId);
     if (!data) return;
 
+    // Strict policy check: verify that nominee is not already voted for in another category
+    const existingVote = getVotedCategoryForNominee(nomineeId);
+    if (existingVote && existingVote.categoryId !== categoryId) {
+      alert(`Policy Restriction: You have already cast your vote for ${data.candidate.name} in Category ${existingVote.category.number} (${existingVote.category.name}). Each nominee can only receive a vote in one category.`);
+      return;
+    }
+
     const voterIdInput = document.getElementById('voteConfirmVoterId');
     const voterId = voterIdInput ? voterIdInput.value.trim().toUpperCase() : state.currentVoterId;
 
@@ -644,10 +727,14 @@
       return;
     }
 
-    // Save voter ID
-    state.currentVoterId = voterId;
-    localStorage.setItem(STORAGE_KEYS.VOTER_ID, voterId);
-    updateVoterPill();
+    // Save voter ID & switch voter if different
+    if (voterId !== state.currentVoterId) {
+      saveVotes();
+      state.currentVoterId = voterId;
+      localStorage.setItem(STORAGE_KEYS.VOTER_ID, voterId);
+      loadVotesForCurrentVoter();
+      updateVoterPill();
+    }
 
     // Generate Cryptographic Ballot Hash Simulation
     const ballotHash = 'RAML-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-' +
@@ -773,14 +860,31 @@
     }
 
     if (voteBtn) {
-      const isVoted = state.userVotes[category.id]?.nomineeId === candidate.id;
-      voteBtn.innerHTML = isVoted 
-        ? `<i class="fa-solid fa-check"></i> Already Voted` 
-        : `<i class="fa-solid fa-check-to-slot"></i> Vote for ${candidate.name.split(' ')[0]}`;
-      voteBtn.onclick = () => {
-        dialog.close();
-        openVoteConfirmation(category.id, candidate.id);
-      };
+      const existingVote = getVotedCategoryForNominee(candidate.id);
+      if (existingVote && existingVote.categoryId === category.id) {
+        voteBtn.className = 'btn-voted-status';
+        voteBtn.disabled = false;
+        voteBtn.innerHTML = `<i class="fa-solid fa-check"></i> Your Vote in this Category`;
+        voteBtn.onclick = () => {
+          dialog.close();
+          openReceiptModal(category.id);
+        };
+      } else if (existingVote && existingVote.categoryId !== category.id) {
+        voteBtn.className = 'btn-disabled-vote';
+        voteBtn.disabled = true;
+        voteBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Voted in Cat ${existingVote.category.number} (${existingVote.category.shortName})`;
+        voteBtn.title = `Rule: Each nominee can only be voted for in one category. You already voted for ${candidate.name} in Category ${existingVote.category.number}.`;
+        voteBtn.onclick = null;
+      } else {
+        voteBtn.className = 'btn-primary-vote';
+        voteBtn.disabled = state.electionStatus === 'closed';
+        const isCatVoted = !!state.userVotes[category.id];
+        voteBtn.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> ${isCatVoted ? 'Change Vote to ' : 'Vote for '} ${candidate.name.split(' ')[0]}`;
+        voteBtn.onclick = () => {
+          dialog.close();
+          openVoteConfirmation(category.id, candidate.id);
+        };
+      }
     }
 
     if (dialog && typeof dialog.showModal === 'function') {
@@ -1030,15 +1134,37 @@
       chip.addEventListener('click', () => {
         playSound('click');
         const id = chip.dataset.voterId;
-        state.currentVoterId = id;
-        localStorage.setItem(STORAGE_KEYS.VOTER_ID, id);
-        updateVoterPill();
+        switchVoter(id);
         const voterDlg = document.getElementById('voterLoginDialog');
         if (voterDlg) voterDlg.close();
-        showToast(`Authenticated as ${id}`);
-        renderVotingSections();
       });
     });
+
+    // Custom Voter ID Input
+    const customVoterBtn = document.getElementById('customVoterSubmitBtn');
+    const customVoterInput = document.getElementById('customVoterIdInput');
+    if (customVoterBtn && customVoterInput) {
+      const handleCustomLogin = () => {
+        const val = customVoterInput.value.trim().toUpperCase();
+        if (val) {
+          playSound('click');
+          switchVoter(val);
+          customVoterInput.value = '';
+          const voterDlg = document.getElementById('voterLoginDialog');
+          if (voterDlg) voterDlg.close();
+        } else {
+          alert('Please enter a valid Voter / Staff ID.');
+        }
+      };
+
+      customVoterBtn.addEventListener('click', handleCustomLogin);
+      customVoterInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleCustomLogin();
+        }
+      });
+    }
   }
 
   // --- 11. Application Bootstrap ---

@@ -251,6 +251,14 @@
         </div>
       </div>
 
+      <!-- Official Voting Policy Banner -->
+      <div class="voting-policy-banner" role="region" aria-label="Official Voting Policy">
+        <span class="policy-badge"><i class="fa-solid fa-scale-balanced"></i> Voting Rule</span>
+        <div class="policy-text">
+          <strong>One Vote Per Person &amp; Nominee Rule:</strong> You can only cast 1 vote per category, and <strong>each nominee can only be voted for in at most one category</strong>. Once a nominee receives your vote, they are reserved and cannot be selected for any other category.
+        </div>
+      </div>
+
       <!-- Category Header Row with Quick Jump Select & Count Pill -->
       <div class="category-nav-header-row">
         <span class="category-counter-pill">
@@ -530,6 +538,25 @@
             <span><strong>RAML-8821</strong> • Operations & IT Voter (Default)</span>
             <i class="fa-solid fa-chevron-right" style="font-size: 0.75rem;"></i>
           </button>
+        </div>
+
+        <!-- Custom Voter ID Input -->
+        <div style="margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--border-subtle);">
+          <label for="customVoterIdInput" style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--gold-light); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+            <i class="fa-solid fa-id-card"></i> Or Authenticate as Custom Staff ID:
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input 
+              type="text" 
+              id="customVoterIdInput" 
+              class="search-input" 
+              placeholder="e.g. RAML-9042 or Staff Name..." 
+              style="font-size: 0.85rem;"
+            />
+            <button type="button" class="btn-primary-vote" id="customVoterSubmitBtn" style="padding: 0.6rem 1.2rem; flex: 0 0 auto; border-radius: var(--radius-sm);">
+              Login
+            </button>
+          </div>
         </div>
       </div>
 

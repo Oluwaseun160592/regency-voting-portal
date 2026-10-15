@@ -1260,6 +1260,109 @@ button {
   gap: 6px;
 }
 
+.btn-secondary-vote {
+  flex: 1.4;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(201, 168, 76, 0.12);
+  border: 1px solid var(--gold-border);
+  color: var(--gold-light);
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary-vote:hover {
+  background: rgba(201, 168, 76, 0.22);
+  border-color: var(--gold-primary);
+  color: #ffffff;
+}
+
+.btn-disabled-vote {
+  flex: 1.4;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.nominee-locked-badge {
+  background: rgba(234, 179, 8, 0.16);
+  backdrop-filter: blur(8px);
+  color: #fde047;
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nominee-card.locked-nominee {
+  opacity: 0.82;
+  border-color: rgba(234, 179, 8, 0.2);
+}
+
+.nominee-card.locked-nominee:hover {
+  opacity: 1;
+}
+
+/* Voting Policy Rule Banner */
+.voting-policy-banner {
+  background: linear-gradient(90deg, rgba(201, 168, 76, 0.12) 0%, rgba(30, 58, 108, 0.25) 100%);
+  border: 1px solid var(--gold-border);
+  border-left: 4px solid var(--gold-primary);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.voting-policy-banner .policy-badge {
+  background: var(--gold-gradient);
+  color: #070e1b;
+  font-weight: 800;
+  font-size: 0.75rem;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.voting-policy-banner .policy-text {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.voting-policy-banner .policy-text strong {
+  color: var(--gold-light);
+}
+
 /* ==========================================================================
    6. Live Results & Analytics View
    ========================================================================== */
