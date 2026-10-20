@@ -400,6 +400,52 @@ button {
   50% { opacity: 0.6; transform: scale(1.2); }
 }
 
+/* Supabase Status Pill */
+.supabase-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(62, 207, 142, 0.08);
+  border: 1px solid rgba(62, 207, 142, 0.3);
+  color: var(--text-primary);
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.supabase-status-pill:hover {
+  background: rgba(62, 207, 142, 0.16);
+  border-color: #3ecf8e;
+}
+
+.supabase-status-pill.offline {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.supabase-status-pill.offline:hover {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: #f59e0b;
+}
+
+.supabase-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: #3ecf8e;
+  box-shadow: 0 0 8px #3ecf8e;
+  animation: pulse 2s infinite;
+}
+
+.supabase-status-dot.offline {
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+  animation: none;
+}
+
 /* Utility Action Buttons */
 .icon-action-btn {
   width: 38px;

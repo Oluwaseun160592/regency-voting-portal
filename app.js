@@ -772,6 +772,26 @@
     };
     saveVotes();
 
+    // Sync with Supabase Cloud Database if configured
+    if (window.RAML_SUPABASE && window.RAML_SUPABASE.isConfigured()) {
+      window.RAML_SUPABASE.castVoteRemote({
+        voterId,
+        categoryId,
+        nomineeId,
+        nomineeName: data.candidate.name,
+        categoryName: `Category ${data.category.number}: ${data.category.name}`,
+        ballotHash
+      }).then(res => {
+        if (res && res.success) {
+          console.log('[RAML Supabase] Ballot successfully stored in cloud database.');
+        } else if (res && res.alreadyVoted) {
+          console.warn('[RAML Supabase] Ballot already present in cloud database.');
+        }
+      }).catch(err => {
+        console.warn('[RAML Supabase] Non-fatal cloud sync warning:', err);
+      });
+    }
+
     // Add to audit ledger
     state.auditLog.unshift({
       ballotHash,
@@ -1167,7 +1187,248 @@
     }
   }
 
-  // --- 11. Application Bootstrap ---
+  // --- 11. Supabase Cloud Integration & Real-time Live Sync ---
+  function setupSupabaseIntegration() {
+    const statusBtn = document.getElementById('supabaseStatusBtn');
+    const statusDot = document.getElementById('supabaseStatusDot');
+    const statusText = document.getElementById('supabaseStatusText');
+    const configDialog = document.getElementById('supabaseConfigDialog');
+    const modalBadge = document.getElementById('supabaseModalStatusBadge');
+    const urlInput = document.getElementById('supabaseUrlInput');
+    const keyInput = document.getElementById('supabaseKeyInput');
+    const feedbackBox = document.getElementById('supabaseFeedbackBox');
+    const saveBtn = document.getElementById('supabaseSaveBtn');
+    const testBtn = document.getElementById('supabaseTestBtn');
+    const disconnectBtn = document.getElementById('supabaseDisconnectBtn');
+    const syncLocalBtn = document.getElementById('supabaseSyncLocalBtn');
+
+    function updateStatusUI() {
+      if (!window.RAML_SUPABASE) return;
+      const isReady = window.RAML_SUPABASE.isConfigured();
+      if (isReady) {
+        if (statusBtn) statusBtn.classList.remove('offline');
+        if (statusDot) statusDot.classList.remove('offline');
+        if (statusText) statusText.textContent = 'Supabase Live';
+        if (modalBadge) {
+          modalBadge.textContent = 'Cloud Connected';
+          modalBadge.style.background = 'rgba(62, 207, 142, 0.2)';
+          modalBadge.style.color = '#3ecf8e';
+        }
+        if (syncLocalBtn) syncLocalBtn.style.display = 'inline-flex';
+      } else {
+        if (statusBtn) statusBtn.classList.add('offline');
+        if (statusDot) statusDot.classList.add('offline');
+        if (statusText) statusText.textContent = 'Supabase Sync';
+        if (modalBadge) {
+          modalBadge.textContent = 'Local Mode';
+          modalBadge.style.background = 'rgba(245, 158, 11, 0.2)';
+          modalBadge.style.color = '#f59e0b';
+        }
+        if (syncLocalBtn) syncLocalBtn.style.display = 'none';
+      }
+    }
+
+    function showFeedback(msg, type) {
+      if (!feedbackBox) return;
+      feedbackBox.style.display = 'block';
+      feedbackBox.textContent = msg;
+      if (type === 'success') {
+        feedbackBox.style.background = 'rgba(16, 185, 129, 0.15)';
+        feedbackBox.style.border = '1px solid #10b981';
+        feedbackBox.style.color = '#10b981';
+      } else if (type === 'error') {
+        feedbackBox.style.background = 'rgba(239, 68, 68, 0.15)';
+        feedbackBox.style.border = '1px solid #ef4444';
+        feedbackBox.style.color = '#ef4444';
+      } else if (type === 'loading') {
+        feedbackBox.style.background = 'rgba(201, 168, 76, 0.15)';
+        feedbackBox.style.border = '1px solid var(--gold-primary)';
+        feedbackBox.style.color = 'var(--gold-light)';
+      } else {
+        feedbackBox.style.background = 'rgba(59, 130, 246, 0.15)';
+        feedbackBox.style.border = '1px solid #3b82f6';
+        feedbackBox.style.color = '#60a5fa';
+      }
+    }
+
+    async function syncFromCloud() {
+      if (!window.RAML_SUPABASE || !window.RAML_SUPABASE.isConfigured()) return;
+      try {
+        const cloudTallies = await window.RAML_SUPABASE.fetchRemoteTallies();
+        if (cloudTallies && Object.keys(cloudTallies).length > 0) {
+          Object.entries(cloudTallies).forEach(([k, count]) => {
+            state.candidateTally[k] = count;
+          });
+          saveTally();
+        }
+
+        const cloudVotes = await window.RAML_SUPABASE.fetchRemoteVotes();
+        if (cloudVotes && Array.isArray(cloudVotes)) {
+          cloudVotes.forEach(v => {
+            if (v.voter_id === state.currentVoterId) {
+              state.userVotes[v.category_id] = {
+                nomineeId: v.nominee_id,
+                nomineeName: v.nominee_name,
+                categoryName: v.category_name,
+                timestamp: new Date(v.created_at).toLocaleString(),
+                ballotHash: v.ballot_hash,
+                voterId: v.voter_id
+              };
+            }
+          });
+          saveVotes();
+        }
+
+        renderCategoryTabs();
+        renderVotingSections();
+        if (state.activeView === 'results') {
+          renderLiveResults();
+        }
+      } catch (err) {
+        console.warn('[RAML Supabase] Cloud sync error:', err);
+      }
+    }
+
+    // Open Supabase Dialog
+    if (statusBtn && configDialog) {
+      statusBtn.addEventListener('click', () => {
+        playSound('dialog');
+        if (window.RAML_SUPABASE) {
+          const cfg = window.RAML_SUPABASE.getConfig();
+          if (urlInput) urlInput.value = cfg.url || '';
+          if (keyInput) keyInput.value = cfg.anonKey || '';
+        }
+        if (feedbackBox) feedbackBox.style.display = 'none';
+        configDialog.showModal();
+      });
+    }
+
+    // Test Connection
+    if (testBtn) {
+      testBtn.addEventListener('click', async () => {
+        playSound('click');
+        const url = urlInput ? urlInput.value.trim() : '';
+        const key = keyInput ? keyInput.value.trim() : '';
+        if (!url || !key) {
+          showFeedback('Please enter both Supabase Project URL and Anon API Key.', 'error');
+          return;
+        }
+        showFeedback('Testing Supabase Cloud connection...', 'loading');
+        const res = await window.RAML_SUPABASE.testConnection(url, key);
+        if (res.success) {
+          showFeedback('Connection Successful! Ready to sync votes in real time.', 'success');
+        } else {
+          showFeedback(`Connection failed: ${res.message}`, 'error');
+        }
+      });
+    }
+
+    // Save & Connect
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        playSound('click');
+        const url = urlInput ? urlInput.value.trim() : '';
+        const key = keyInput ? keyInput.value.trim() : '';
+        if (!url || !key) {
+          showFeedback('Please enter both Supabase Project URL and Anon API Key.', 'error');
+          return;
+        }
+        showFeedback('Saving credentials and establishing live cloud link...', 'loading');
+        const res = await window.RAML_SUPABASE.saveCredentials(url, key);
+        if (res.success) {
+          showFeedback('Connected to Supabase! Syncing ballots...', 'success');
+          updateStatusUI();
+          await syncFromCloud();
+          showToast('Connected to Supabase Cloud Database!', 'fa-solid fa-cloud');
+          setTimeout(() => {
+            if (configDialog) configDialog.close();
+          }, 1000);
+        } else {
+          showFeedback(`Could not connect: ${res.message}`, 'error');
+        }
+      });
+    }
+
+    // Disconnect
+    if (disconnectBtn) {
+      disconnectBtn.addEventListener('click', () => {
+        playSound('click');
+        if (confirm('Disconnect Supabase and revert to local browser storage?')) {
+          window.RAML_SUPABASE.clearCredentials();
+          if (urlInput) urlInput.value = '';
+          if (keyInput) keyInput.value = '';
+          showFeedback('Disconnected from Supabase Cloud. Reverted to Local Mode.', 'info');
+          updateStatusUI();
+          showToast('Supabase disconnected. Using Local Mode.');
+        }
+      });
+    }
+
+    // Sync Local Votes to Cloud
+    if (syncLocalBtn) {
+      syncLocalBtn.addEventListener('click', async () => {
+        playSound('click');
+        const votes = Object.values(state.userVotes);
+        if (votes.length === 0) {
+          showFeedback('No local votes to push.', 'info');
+          return;
+        }
+        showFeedback(`Pushing ${votes.length} local votes to Supabase Cloud...`, 'loading');
+        let pushed = 0;
+        for (const v of votes) {
+          const cat = window.VOTING_DATA.categories.find(c => c.nominees.some(n => n.id === v.nomineeId));
+          await window.RAML_SUPABASE.castVoteRemote({
+            voterId: v.voterId || state.currentVoterId,
+            categoryId: cat ? cat.id : 'unknown',
+            nomineeId: v.nomineeId,
+            nomineeName: v.nomineeName,
+            categoryName: v.categoryName,
+            ballotHash: v.ballotHash
+          });
+          pushed++;
+        }
+        showFeedback(`Successfully uploaded ${pushed} local votes to Supabase Cloud!`, 'success');
+        syncFromCloud();
+      });
+    }
+
+    // Listen to incoming live votes from other devices
+    window.addEventListener('raml:cloud-vote-received', (event) => {
+      const cloudVote = event.detail;
+      if (!cloudVote) return;
+      
+      const voteKey = `${cloudVote.category_id}__${cloudVote.nominee_id}`;
+      state.candidateTally[voteKey] = (state.candidateTally[voteKey] || 0) + 1;
+      saveTally();
+
+      if (cloudVote.voter_id === state.currentVoterId && !state.userVotes[cloudVote.category_id]) {
+        state.userVotes[cloudVote.category_id] = {
+          nomineeId: cloudVote.nominee_id,
+          nomineeName: cloudVote.nominee_name,
+          categoryName: cloudVote.category_name,
+          timestamp: new Date(cloudVote.created_at).toLocaleString(),
+          ballotHash: cloudVote.ballot_hash,
+          voterId: cloudVote.voter_id
+        };
+        saveVotes();
+      }
+
+      renderCategoryTabs();
+      renderVotingSections();
+      if (state.activeView === 'results') {
+        renderLiveResults();
+      }
+      showToast(`Live vote received: ${cloudVote.nominee_name}`, 'fa-solid fa-cloud-arrow-down');
+    });
+
+    updateStatusUI();
+    if (window.RAML_SUPABASE && window.RAML_SUPABASE.isConfigured()) {
+      window.RAML_SUPABASE.initRealtime();
+      syncFromCloud();
+    }
+  }
+
+  // --- 12. Application Bootstrap ---
   function init() {
     initTally();
     updateVoterPill();
@@ -1176,6 +1437,7 @@
     startCountdownTimer();
     setupAdminControls();
     setupEventListeners();
+    setupSupabaseIntegration();
   }
 
   // Run on DOM Ready

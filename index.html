@@ -129,6 +129,13 @@
           </button>
         </div>
 
+        <!-- Supabase Cloud Sync Status Pill -->
+        <button class="supabase-status-pill offline" id="supabaseStatusBtn" title="Supabase Cloud Database Sync Status (Click to configure)">
+          <span class="supabase-status-dot offline" id="supabaseStatusDot"></span>
+          <span id="supabaseStatusText">Supabase Sync</span>
+          <i class="fa-solid fa-cloud" style="font-size: 0.75rem; margin-left: 2px;"></i>
+        </button>
+
         <!-- Voter ID Status Pill -->
         <div class="voter-identity-pill" id="voterIdentityPill" title="Click to view or switch voter credentials">
           <span class="voter-badge-dot"></span>
@@ -617,6 +624,103 @@
     </div>
   </dialog>
 
+  <!-- 7.6 Supabase Cloud Database Configuration Modal -->
+  <dialog id="supabaseConfigDialog" aria-labelledby="supabaseConfigTitle">
+    <div class="modal-card" style="width: 580px; max-width: 95vw;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i class="fa-solid fa-cloud-arrow-up" style="color: #3ecf8e;"></i>
+          <h3 id="supabaseConfigTitle">Supabase Cloud Database Sync</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Close dialog">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div style="background: rgba(62, 207, 142, 0.08); border: 1px solid rgba(62, 207, 142, 0.25); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <span style="font-size: 0.85rem; font-weight: 700; color: #3ecf8e;">
+              <i class="fa-solid fa-circle-nodes"></i> Multi-Device Cloud Sync
+            </span>
+            <span id="supabaseModalStatusBadge" style="font-size: 0.75rem; padding: 2px 8px; border-radius: var(--radius-full); background: rgba(245, 158, 11, 0.2); color: #f59e0b; font-weight: 600;">
+              Local Mode
+            </span>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0; line-height: 1.45;">
+            Connect your Supabase project to sync ballots and tallies across phones, laptops, and executive dashboards in real time.
+          </p>
+        </div>
+
+        <!-- Quick 3-Step Guide -->
+        <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.85rem 1rem; margin-bottom: 1.25rem;">
+          <div style="font-size: 0.78rem; font-weight: 700; color: var(--gold-light); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+            <i class="fa-solid fa-list-check"></i> Setup Instructions:
+          </div>
+          <ol style="font-size: 0.8rem; color: var(--text-secondary); padding-left: 1.2rem; margin: 0; line-height: 1.55;">
+            <li>Create or open your free project on <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" style="color: #3ecf8e; text-decoration: underline;">Supabase.com</a>.</li>
+            <li>In Supabase <strong>SQL Editor</strong>, run the included <code style="color: var(--gold-primary);">supabase-schema.sql</code>.</li>
+            <li>Go to <strong>Project Settings &rarr; API</strong>, copy your <strong>Project URL</strong> and <strong>Anon Key</strong>, then paste them below:</li>
+          </ol>
+        </div>
+
+        <!-- Inputs Form -->
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 1.25rem;">
+          <div>
+            <label for="supabaseUrlInput" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+              Project URL
+            </label>
+            <input 
+              type="url" 
+              id="supabaseUrlInput" 
+              class="search-input" 
+              placeholder="https://xyzcompany.supabase.co" 
+              style="font-size: 0.85rem; width: 100%; box-sizing: border-box;" 
+            />
+          </div>
+
+          <div>
+            <label for="supabaseKeyInput" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+              Anon Public API Key
+            </label>
+            <input 
+              type="password" 
+              id="supabaseKeyInput" 
+              class="search-input" 
+              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
+              style="font-size: 0.85rem; width: 100%; box-sizing: border-box;" 
+            />
+          </div>
+        </div>
+
+        <!-- Connection Feedback Box -->
+        <div id="supabaseFeedbackBox" style="display: none; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.82rem; margin-bottom: 1rem;"></div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn-primary-vote" id="supabaseSaveBtn" style="padding: 0.65rem 1.25rem; border-radius: var(--radius-sm); font-size: 0.85rem;">
+            <i class="fa-solid fa-plug"></i> Connect & Save
+          </button>
+          <button type="button" class="admin-btn" id="supabaseTestBtn" style="padding: 0.65rem 1.25rem; font-size: 0.85rem;">
+            <i class="fa-solid fa-vial-circle-check"></i> Test Connection
+          </button>
+          <button type="button" class="admin-btn" id="supabaseSyncLocalBtn" style="padding: 0.65rem 1.25rem; font-size: 0.85rem; display: none;">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Push Local Votes to Cloud
+          </button>
+          <button type="button" class="admin-btn danger" id="supabaseDisconnectBtn" style="padding: 0.65rem 1rem; font-size: 0.85rem; margin-left: auto;">
+            <i class="fa-solid fa-unlink"></i> Reset to Local
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary modal-close-btn">
+          Close
+        </button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Canvas Confetti Overlay -->
   <canvas id="confettiCanvas" aria-hidden="true"></canvas>
 
@@ -698,6 +802,8 @@
   </footer>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script src="candidates.js"></script>
   <script src="app.js"></script>
 </body>

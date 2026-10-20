@@ -4,53 +4,48 @@ Official Electronic Voting Portal for the **Regency Assets Management Limited Co
 
 ---
 
-## 🚀 How to Deploy on Render (Step-by-Step)
+## 🌐 1. Free Hosting on GitHub Pages (Recommended)
 
-Deploying this site on **Render** (https://render.com) takes less than 2 minutes and is **100% free**.
+This repository is already configured with a continuous deployment GitHub Actions workflow (`.github/workflows/deploy.yml`).
 
-### Option A: Deploy as a Static Site (Recommended - Fastest & Always Free)
-
-1. **Push this project to a GitHub Repository**:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit of Regency Assets Voting Portal"
-   git branch -M main
-   git remote add origin https://github.com/<your-username>/<your-repo-name>.git
-   git push -u origin main
+### To activate GitHub Pages on your repository:
+1. Open your GitHub repository in your browser:
+   [https://github.com/Oluwaseun160592/regency-voting-portal](https://github.com/Oluwaseun160592/regency-voting-portal)
+2. Click **Settings** (tab at the top right of the repository).
+3. In the left sidebar, click **Pages** (under the "Code and automation" section).
+4. Under **Build and deployment &rarr; Source**:
+   - Select **GitHub Actions** (recommended for automatic deploys).
+   - *Or* select **Deploy from a branch** &rarr; select branch: `main` &rarr; folder: `/ (root)` &rarr; click **Save**.
+5. Within 30–60 seconds, your site will be live at:
    ```
-
-2. **Open Render Dashboard**:
-   - Go to [https://dashboard.render.com](https://dashboard.render.com) and log in.
-   - Click the blue **"New +"** button in the top right.
-   - Select **"Static Site"**.
-
-3. **Connect Repository & Configure**:
-   - Connect your GitHub account and select your repository.
-   - Fill in the following settings:
-     - **Name**: `regency-voting-portal` (or your preferred name)
-     - **Branch**: `main`
-     - **Build Command**: *(leave blank)*
-     - **Publish Directory**: `.` (a single dot)
-   
-4. **Deploy**:
-   - Click **"Create Static Site"**.
-   - Render will build and deploy the site in ~30 seconds.
-   - Your public URL will be live at:
-     ```
-     https://regency-voting-portal.onrender.com
-     ```
-   - Anyone on any device (phone, laptop, tablet) can now access and vote!
+   https://oluwaseun160592.github.io/regency-voting-portal/
+   ```
 
 ---
 
-### Option B: Deploy Using Render Blueprints (Automatic)
+## ⚡ 2. Supabase Cloud Database & Realtime Sync
 
-Since this repository includes [`render.yaml`](./render.yaml):
-1. In your Render Dashboard, click **"New +"** -> **"Blueprint"**.
-2. Connect this repository.
-3. Render will read `render.yaml` and configure everything automatically.
-4. Click **"Apply"**.
+To allow voters to cast ballots from different devices (phones, laptops, office desktops) and see votes update on live charts in real time:
+
+1. Follow the **[Supabase Cloud Setup Guide (SUPABASE_SETUP.md)](./SUPABASE_SETUP.md)**.
+2. Run the included **[`supabase-schema.sql`](./supabase-schema.sql)** in your Supabase SQL Editor.
+3. In the voting portal, click the **"Supabase Sync"** button in the header and paste your Supabase Project URL and Anon Key (or save them in [`supabase-config.js`](./supabase-config.js)).
+4. The status badge will turn **🟢 Supabase Live**, and all votes will sync across all devices in real time!
+
+---
+
+## 🚀 3. Alternative Hosting: Render
+
+You can also host on **Render** (https://render.com) for free:
+
+1. Log into [Render Dashboard](https://dashboard.render.com).
+2. Click **"New +"** &rarr; **"Static Site"**.
+3. Connect your GitHub repository `regency-voting-portal`.
+4. Settings:
+   - **Branch**: `main`
+   - **Publish Directory**: `.`
+5. Click **"Create Static Site"**.
+6. Live URL: `https://regency-voting-portal.onrender.com`
 
 ---
 
