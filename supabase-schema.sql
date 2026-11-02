@@ -1,7 +1,13 @@
 -- =========================================================================
 -- REGENCY ASSETS MANAGEMENT LIMITED (RAML)
--- Corporate Excellence Awards - Supabase Database Schema
+-- Corporate Excellence Awards - Confidential Voting Database Schema
 -- Run this script in your Supabase SQL Editor (https://supabase.com/dashboard)
+-- =========================================================================
+-- CONFIDENTIALITY DESIGN:
+-- 1. Public/Anon users CAN submit/cast official ballots (INSERT permission).
+-- 2. Public/Anon users CANNOT view individual votes or tallies (SELECT blocked via RLS).
+-- 3. Only verified Election Administrators (via Admin Passcode RPC or Service Role)
+--    can view live vote tallies, leaderboards, and audit logs.
 -- =========================================================================
 
 -- 1. Create table for authentic votes
@@ -37,8 +43,63 @@ CREATE TABLE IF NOT EXISTS public.raml_audit_logs (
 
 CREATE INDEX IF NOT EXISTS idx_raml_audit_created ON public.raml_audit_logs (created_at DESC);
 
--- 3. Create view for aggregated live results
-CREATE OR REPLACE VIEW public.raml_tallies AS
+-- 3. Enable Row Level Security (RLS) on all tables
+ALTER TABLE public.raml_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.raml_audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- 4. Clean up any existing policies to avoid conflicts
+DROP POLICY IF EXISTS "Public can view votes" ON public.raml_votes;
+DROP POLICY IF EXISTS "Public can cast votes" ON public.raml_votes;
+DROP POLICY IF EXISTS "Only admin can view votes" ON public.raml_votes;
+
+DROP POLICY IF EXISTS "Public can view audit logs" ON public.raml_audit_logs;
+DROP POLICY IF EXISTS "Public can insert audit logs" ON public.raml_audit_logs;
+DROP POLICY IF EXISTS "Only admin can view audit logs" ON public.raml_audit_logs;
+
+-- 5. ROW LEVEL SECURITY (RLS) POLICIES FOR CONFIDENTIAL VOTING:
+
+-- Policy 5.1: Public/Anon can cast ballots (INSERT), but CANNOT SELECT/READ votes
+CREATE POLICY "Public can cast votes" 
+    ON public.raml_votes 
+    FOR INSERT 
+    TO public, anon, authenticated
+    WITH CHECK (true);
+
+-- Policy 5.2: Only Authenticated Admins or Service Role can view raw votes
+CREATE POLICY "Only admin can view votes" 
+    ON public.raml_votes 
+    FOR SELECT 
+    TO authenticated, service_role
+    USING (
+        auth.role() = 'service_role' 
+        OR (auth.jwt() ->> 'role') = 'admin' 
+        OR (auth.jwt() ->> 'is_admin')::boolean = true
+        OR current_user = 'service_role'
+    );
+
+-- Policy 5.3: Public/Anon can append to audit ledger upon voting
+CREATE POLICY "Public can insert audit logs" 
+    ON public.raml_audit_logs 
+    FOR INSERT 
+    TO public, anon, authenticated
+    WITH CHECK (true);
+
+-- Policy 5.4: Only Admins can view audit logs
+CREATE POLICY "Only admin can view audit logs" 
+    ON public.raml_audit_logs 
+    FOR SELECT 
+    TO authenticated, service_role
+    USING (
+        auth.role() = 'service_role' 
+        OR (auth.jwt() ->> 'role') = 'admin' 
+        OR (auth.jwt() ->> 'is_admin')::boolean = true
+        OR current_user = 'service_role'
+    );
+
+-- 6. Secure Aggregation View with Security Invoker
+-- (Ensures public users without SELECT on raml_votes cannot read tallies through this view)
+CREATE OR REPLACE VIEW public.raml_tallies 
+WITH (security_invoker = true) AS
 SELECT 
     category_id,
     nominee_id,
@@ -46,38 +107,80 @@ SELECT
 FROM public.raml_votes
 GROUP BY category_id, nominee_id;
 
--- 4. Enable Row Level Security (RLS)
-ALTER TABLE public.raml_votes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.raml_audit_logs ENABLE ROW LEVEL SECURITY;
+-- 7. SECURE RPC FUNCTIONS FOR AUTHORIZED ADMIN ACCESS
+-- Passcode-protected Security Definer functions allow the verified Admin
+-- to retrieve live totals and audit logs even when connecting with the client anon key.
 
--- 5. Define RLS Policies for Anon Public access
--- Permitting portal users to view results and cast their official ballots
-DROP POLICY IF EXISTS "Public can view votes" ON public.raml_votes;
-CREATE POLICY "Public can view votes" 
-    ON public.raml_votes 
-    FOR SELECT 
-    USING (true);
+-- Default Election Admin Passcode: 'RAML-ADMIN-2026'
+-- (To change, replace 'RAML-ADMIN-2026' below with your custom passkey)
+CREATE OR REPLACE FUNCTION public.get_admin_election_tallies(admin_passcode TEXT)
+RETURNS TABLE (
+    category_id TEXT,
+    nominee_id TEXT,
+    total_votes BIGINT
+) 
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF admin_passcode IS NULL OR admin_passcode != 'RAML-ADMIN-2026' THEN
+        RAISE EXCEPTION 'Access Denied: Invalid Election Administrator Passcode';
+    END IF;
 
-DROP POLICY IF EXISTS "Public can cast votes" ON public.raml_votes;
-CREATE POLICY "Public can cast votes" 
-    ON public.raml_votes 
-    FOR INSERT 
-    WITH CHECK (true);
+    RETURN QUERY
+    SELECT 
+        v.category_id,
+        v.nominee_id,
+        COUNT(*)::BIGINT AS total_votes
+    FROM public.raml_votes v
+    GROUP BY v.category_id, v.nominee_id;
+END;
+$$;
 
-DROP POLICY IF EXISTS "Public can view audit logs" ON public.raml_audit_logs;
-CREATE POLICY "Public can view audit logs" 
-    ON public.raml_audit_logs 
-    FOR SELECT 
-    USING (true);
+-- Secure RPC: Admin Audit Logs retrieval
+CREATE OR REPLACE FUNCTION public.get_admin_audit_logs(admin_passcode TEXT)
+RETURNS TABLE (
+    id UUID,
+    ballot_hash TEXT,
+    voter_id TEXT,
+    category_id TEXT,
+    category_name TEXT,
+    candidate_id TEXT,
+    candidate_name TEXT,
+    created_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF admin_passcode IS NULL OR admin_passcode != 'RAML-ADMIN-2026' THEN
+        RAISE EXCEPTION 'Access Denied: Invalid Election Administrator Passcode';
+    END IF;
 
-DROP POLICY IF EXISTS "Public can insert audit logs" ON public.raml_audit_logs;
-CREATE POLICY "Public can insert audit logs" 
-    ON public.raml_audit_logs 
-    FOR INSERT 
-    WITH CHECK (true);
+    RETURN QUERY
+    SELECT 
+        a.id,
+        a.ballot_hash,
+        a.voter_id,
+        a.category_id,
+        a.category_name,
+        a.candidate_id,
+        a.candidate_name,
+        a.created_at
+    FROM public.raml_audit_logs a
+    ORDER BY a.created_at DESC;
+END;
+$$;
 
--- 6. Enable Supabase Realtime for instant multi-device synchronization
--- This broadcasts whenever a new vote is submitted so all screens update live!
+-- Grant execution to API roles (access is enforced internally by the passcode check)
+GRANT EXECUTE ON FUNCTION public.get_admin_election_tallies(TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_admin_audit_logs(TEXT) TO anon, authenticated, service_role;
+
+-- 8. Enable Supabase Realtime
+-- Note: Because Row Level Security is active, Supabase Realtime only delivers
+-- raw change payloads to clients that have SELECT permission on raml_votes.
 DO $$
 BEGIN
     IF NOT EXISTS (

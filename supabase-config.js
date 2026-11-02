@@ -142,36 +142,65 @@
   }
 
   /**
-   * Fetch all remote votes from Supabase
+   * Fetch all remote votes from Supabase (Admin Only)
    */
-  async function fetchRemoteVotes() {
+  async function fetchRemoteVotes(adminPasscode = null) {
     if (!supabaseClient) return null;
     try {
+      if (adminPasscode) {
+        const { data: auditData, error: auditError } = await supabaseClient
+          .rpc('get_admin_audit_logs', { admin_passcode: adminPasscode });
+        if (!auditError && Array.isArray(auditData)) {
+          return auditData;
+        }
+      }
+
       const { data, error } = await supabaseClient
         .from('raml_votes')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Expected under RLS for confidential public balloting
+        return null;
+      }
       return data || [];
     } catch (err) {
-      console.warn('[RAML Supabase] fetchRemoteVotes error:', err);
+      console.warn('[RAML Supabase] fetchRemoteVotes confidential/restricted:', err);
       return null;
     }
   }
 
   /**
-   * Fetch aggregated tallies from Supabase
+   * Fetch aggregated tallies from Supabase (Admin Only)
+   * Public requests cannot read tallies due to Row Level Security.
    */
-  async function fetchRemoteTallies() {
+  async function fetchRemoteTallies(adminPasscode = null) {
     if (!supabaseClient) return null;
     try {
-      // First try to read from the aggregated view raml_tallies
+      // 1. If admin passcode supplied, invoke the secure RPC
+      if (adminPasscode) {
+        const { data: rpcData, error: rpcError } = await supabaseClient
+          .rpc('get_admin_election_tallies', { admin_passcode: adminPasscode });
+
+        if (!rpcError && Array.isArray(rpcData)) {
+          const tallyMap = {};
+          rpcData.forEach(row => {
+            tallyMap[`${row.category_id}__${row.nominee_id}`] = parseInt(row.total_votes, 10);
+          });
+          return tallyMap;
+        } else if (rpcError) {
+          console.warn('[RAML Supabase] Admin tallies RPC response:', rpcError.message);
+          return null;
+        }
+      }
+
+      // 2. Direct read (will succeed only for Supabase authenticated admins or service_role)
       const { data: viewData, error: viewError } = await supabaseClient
         .from('raml_tallies')
         .select('*');
 
-      if (!viewError && Array.isArray(viewData)) {
+      if (!viewError && Array.isArray(viewData) && viewData.length > 0) {
         const tallyMap = {};
         viewData.forEach(row => {
           tallyMap[`${row.category_id}__${row.nominee_id}`] = row.total_votes;
@@ -179,21 +208,10 @@
         return tallyMap;
       }
 
-      // Fallback: manually aggregate from raml_votes
-      const { data: votes, error: votesError } = await supabaseClient
-        .from('raml_votes')
-        .select('category_id, nominee_id');
-
-      if (votesError) throw votesError;
-
-      const tallyMap = {};
-      (votes || []).forEach(v => {
-        const key = `${v.category_id}__${v.nominee_id}`;
-        tallyMap[key] = (tallyMap[key] || 0) + 1;
-      });
-      return tallyMap;
+      // Confidential mode: Public anon has no access
+      return null;
     } catch (err) {
-      console.warn('[RAML Supabase] fetchRemoteTallies error:', err);
+      console.warn('[RAML Supabase] fetchRemoteTallies confidential/restricted:', err);
       return null;
     }
   }

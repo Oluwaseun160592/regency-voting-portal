@@ -123,9 +123,19 @@
             <i class="fa-solid fa-check-to-slot"></i>
             <span>Cast Ballot</span>
           </button>
-          <button class="view-btn" id="viewResultsBtn" role="tab" aria-selected="false">
+          <button class="view-btn" id="viewResultsBtn" role="tab" aria-selected="false" title="Live Results (Confidential • Admin Only)">
             <i class="fa-solid fa-chart-pie"></i>
             <span>Live Results</span>
+            <i class="fa-solid fa-lock" id="resultsLockBadge" style="font-size: 0.65rem; margin-left: 4px; opacity: 0.75;" title="Sealed • Admin Access Required"></i>
+          </button>
+        </div>
+
+        <!-- Admin Active Session Indicator (Shown when Admin is authenticated) -->
+        <div class="admin-session-pill" id="adminSessionPill" style="display: none;" title="Admin Session Active: Full votes visibility enabled">
+          <span class="admin-pulse-dot"></span>
+          <span>Admin Mode</span>
+          <button type="button" id="adminLogoutSessionBtn" title="Lock & Exit Admin Mode" aria-label="Exit Admin Mode">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
           </button>
         </div>
 
@@ -216,8 +226,8 @@
             <!-- Participation Stat -->
             <div class="hero-participation">
               <div class="hero-stat-item">
-                <span class="hero-stat-value" id="heroTotalVotes">1,180</span>
-                <span class="hero-stat-label">Total Authenticated Votes</span>
+                <span class="hero-stat-value" id="heroTotalVotes"><i class="fa-solid fa-shield-halved" style="color: var(--gold-primary); font-size: 1.1rem; margin-right: 6px;"></i> Sealed</span>
+                <span class="hero-stat-label" id="heroTotalVotesLabel">Confidential Balloting</span>
               </div>
               <div style="width: 1px; height: 32px; background: var(--border-subtle);"></div>
               <div class="hero-stat-item">
@@ -575,6 +585,69 @@
     </div>
   </dialog>
 
+  <!-- 7.4.5 Admin Verification / Passcode Modal -->
+  <dialog id="adminAuthDialog" aria-labelledby="adminAuthTitle">
+    <div class="modal-card" style="width: 480px; max-width: 95vw;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i class="fa-solid fa-shield-halved" style="color: var(--gold-primary); font-size: 1.25rem;"></i>
+          <h3 id="adminAuthTitle">Administrator Access Required</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Close dialog">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="admin-auth-notice">
+          <i class="fa-solid fa-lock" style="font-size: 1.5rem; color: var(--gold-primary); margin-bottom: 8px;"></i>
+          <p style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
+            Confidential Electronic Balloting
+          </p>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
+            In compliance with corporate governance standards, live ballot counts and tally leaderboards are strictly confidential and restricted to authorized Election Committee Administrators.
+          </p>
+        </div>
+
+        <form id="adminAuthForm" onsubmit="return false;" style="margin-top: 1.25rem;">
+          <label for="adminPasscodeInput" style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--gold-light); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+            <i class="fa-solid fa-key"></i> Enter Election Admin Passcode:
+          </label>
+          <div style="position: relative; display: flex; align-items: center;">
+            <input 
+              type="password" 
+              id="adminPasscodeInput" 
+              class="search-input" 
+              placeholder="Enter passcode (Demo default: RAML-ADMIN-2026)" 
+              autocomplete="current-password"
+              style="font-size: 0.88rem; padding-right: 44px;"
+            />
+            <button 
+              type="button" 
+              id="toggleAdminPasscodeVisibility" 
+              style="position: absolute; right: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px;"
+              title="Toggle passcode visibility"
+              aria-label="Toggle passcode visibility"
+            >
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+          <div id="adminAuthFeedback" style="display: none; margin-top: 8px; font-size: 0.8rem; padding: 8px 12px; border-radius: 6px;"></div>
+        </form>
+      </div>
+
+      <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn-secondary modal-close-btn" style="flex: 0 0 auto;">
+          Cancel
+        </button>
+        <button type="button" class="btn-primary-vote" id="adminAuthSubmitBtn" style="flex: 0 0 auto; padding: 0.65rem 1.4rem;">
+          <i class="fa-solid fa-unlock-keyhole"></i>
+          <span>Verify & Unlock</span>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- 7.5 Admin Controls & Demo Drawer -->
   <dialog id="adminDialog" aria-labelledby="adminDialogTitle">
     <div class="modal-card">
@@ -589,6 +662,20 @@
       </div>
 
       <div class="modal-body">
+        <!-- Confidential Mode Status Banner -->
+        <div style="background: rgba(46, 204, 113, 0.1); border: 1px solid rgba(46, 204, 113, 0.3); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-shield-halved" style="color: #2ecc71; font-size: 1.1rem;"></i>
+            <div>
+              <div style="font-size: 0.82rem; font-weight: 700; color: #2ecc71;">Confidential Voting Active</div>
+              <div style="font-size: 0.72rem; color: var(--text-secondary);">Ballot counts are sealed from the public; visible only to authenticated admins.</div>
+            </div>
+          </div>
+          <button type="button" class="admin-btn" id="adminLogoutDrawerBtn" style="padding: 4px 10px; font-size: 0.75rem;" title="Lock Admin Session">
+            <i class="fa-solid fa-lock"></i> Lock
+          </button>
+        </div>
+
         <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
           Quick testing utilities for election administrators and committee reviewers.
         </p>

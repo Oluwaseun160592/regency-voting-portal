@@ -25,11 +25,78 @@
     electionStatus: localStorage.getItem(STORAGE_KEYS.STATUS) || 'active', // 'active' | 'closed'
     soundEnabled: localStorage.getItem(STORAGE_KEYS.AUDIO) !== 'false',
     theme: localStorage.getItem(STORAGE_KEYS.THEME) || 'dark',
+    isAdmin: sessionStorage.getItem('raml_admin_session') === 'true',
+    adminPasscode: localStorage.getItem('raml_admin_passcode') || 'RAML-ADMIN-2026',
     userVotes: {}, // { [categoryId]: { nomineeId, nomineeName, timestamp, ballotHash } }
     candidateTally: {}, // { [nomineeId]: voteCount }
     auditLog: [],
     selectedForVote: null // { categoryId, nomineeId }
   };
+
+  let pendingAdminCallback = null;
+
+  function updateAdminUI() {
+    const sessionPill = document.getElementById('adminSessionPill');
+    const lockBadge = document.getElementById('resultsLockBadge');
+    if (sessionPill) {
+      sessionPill.style.display = state.isAdmin ? 'inline-flex' : 'none';
+    }
+    if (lockBadge) {
+      lockBadge.style.display = state.isAdmin ? 'none' : 'inline-block';
+    }
+  }
+
+  function loginAdmin(passcode) {
+    if (!passcode) return false;
+    const clean = passcode.trim();
+    if (clean === state.adminPasscode.trim()) {
+      state.isAdmin = true;
+      sessionStorage.setItem('raml_admin_session', 'true');
+      updateAdminUI();
+      renderCategoryTabs();
+      renderVotingSections();
+      if (state.activeView === 'results') {
+        renderLiveResults();
+      }
+      showToast('Administrator Session Verified & Unlocked!', 'fa-solid fa-shield-halved');
+      if (window.RAML_SUPABASE && window.RAML_SUPABASE.isConfigured()) {
+        syncFromCloud();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  function logoutAdmin() {
+    state.isAdmin = false;
+    sessionStorage.removeItem('raml_admin_session');
+    updateAdminUI();
+    if (state.activeView === 'results') {
+      switchView('ballot');
+    }
+    renderCategoryTabs();
+    renderVotingSections();
+    showToast('Admin session locked. Confidential public voting active.', 'fa-solid fa-lock');
+  }
+
+  function openAdminAuthModal(onSuccessCallback = null) {
+    pendingAdminCallback = onSuccessCallback;
+    const dialog = document.getElementById('adminAuthDialog');
+    const passInput = document.getElementById('adminPasscodeInput');
+    const feedback = document.getElementById('adminAuthFeedback');
+    if (feedback) {
+      feedback.style.display = 'none';
+      feedback.textContent = '';
+    }
+    if (passInput) {
+      passInput.value = '';
+    }
+    if (dialog && typeof dialog.showModal === 'function') {
+      playSound('dialog');
+      dialog.showModal();
+      setTimeout(() => { if (passInput) passInput.focus(); }, 120);
+    }
+  }
 
   // Load or Seed Candidate Tally
   function initTally() {
@@ -374,7 +441,16 @@
     // Also update hero stats
     const totalVotesAll = Object.values(state.candidateTally).reduce((a, b) => a + b, 0);
     const heroVotesEl = document.getElementById('heroTotalVotes');
-    if (heroVotesEl) heroVotesEl.textContent = totalVotesAll.toLocaleString();
+    const heroVotesLabel = document.getElementById('heroTotalVotesLabel');
+    if (heroVotesEl) {
+      if (state.isAdmin) {
+        heroVotesEl.textContent = totalVotesAll.toLocaleString();
+        if (heroVotesLabel) heroVotesLabel.textContent = 'Total Authenticated Votes (Admin View)';
+      } else {
+        heroVotesEl.innerHTML = '<i class="fa-solid fa-shield-halved" style="color: var(--gold-primary); font-size: 1.1rem; margin-right: 6px;"></i> Sealed';
+        if (heroVotesLabel) heroVotesLabel.textContent = 'Confidential Balloting';
+      }
+    }
   }
 
   // 6.3 Render Voting Sections & Nominee Cards
@@ -489,13 +565,20 @@
                       </div>
                     </div>
 
-                    <div class="card-vote-standing">
-                      <span><i class="fa-solid fa-chart-simple" style="color: var(--gold-light);"></i> Category Standing</span>
-                      <strong style="color: var(--gold-light);">${currentTally} Votes (${percent}%)</strong>
-                    </div>
-                    <div class="card-vote-bar-track">
-                      <div class="card-vote-bar-fill" style="width: ${percent}%;"></div>
-                    </div>
+                    ${state.isAdmin ? `
+                      <div class="card-vote-standing">
+                        <span><i class="fa-solid fa-chart-simple" style="color: var(--gold-light);"></i> Category Standing <span class="admin-standing-tag"><i class="fa-solid fa-shield-halved"></i> Admin</span></span>
+                        <strong style="color: var(--gold-light);">${currentTally} Votes (${percent}%)</strong>
+                      </div>
+                      <div class="card-vote-bar-track">
+                        <div class="card-vote-bar-fill" style="width: ${percent}%;"></div>
+                      </div>
+                    ` : `
+                      <div class="card-vote-confidential">
+                        <span><i class="fa-solid fa-shield-halved" style="color: var(--gold-light);"></i> Confidential Ballot</span>
+                        <span class="badge-sealed"><i class="fa-solid fa-lock" style="font-size: 0.65rem; margin-right: 4px;"></i> Votes Sealed</span>
+                      </div>
+                    `}
 
                     <div class="nominee-actions-group" style="margin-top: 1.4rem;">
                       <button class="btn-secondary view-bio-btn" data-nominee-id="${nom.id}" data-cat-id="${cat.id}">
@@ -573,10 +656,65 @@
     const container = document.getElementById('liveResultsContainer');
     if (!container) return;
 
+    if (!state.isAdmin) {
+      container.innerHTML = `
+        <div class="results-locked-screen">
+          <div class="results-locked-icon">
+            <i class="fa-solid fa-lock"></i>
+          </div>
+          <h2 style="font-size: 1.6rem; color: var(--gold-light); margin-bottom: 0.75rem;">
+            Official Results are Sealed
+          </h2>
+          <p style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 1.75rem; line-height: 1.6; font-size: 0.92rem;">
+            In accordance with Regency corporate governance policies, live ballot counts and category rankings are confidential during voting and restricted to authorized Election Committee Administrators.
+          </p>
+          <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+            <button type="button" class="btn-primary-vote" id="resultsUnlockBtn" style="padding: 0.75rem 1.6rem;">
+              <i class="fa-solid fa-key"></i>
+              <span>Enter Administrator Passcode</span>
+            </button>
+            <button type="button" class="btn-secondary" id="resultsReturnBallotBtn" style="padding: 0.75rem 1.6rem; flex: 0 0 auto;">
+              <i class="fa-solid fa-arrow-left"></i>
+              <span>Return to Ballot</span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      const unlockBtn = document.getElementById('resultsUnlockBtn');
+      const returnBtn = document.getElementById('resultsReturnBallotBtn');
+      if (unlockBtn) {
+        unlockBtn.addEventListener('click', () => {
+          openAdminAuthModal(() => {
+            renderLiveResults();
+          });
+        });
+      }
+      if (returnBtn) {
+        returnBtn.addEventListener('click', () => {
+          switchView('ballot');
+        });
+      }
+      return;
+    }
+
     const categories = window.VOTING_DATA.categories;
     const totalVotesAll = Object.values(state.candidateTally).reduce((a, b) => a + b, 0);
 
     let html = `
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.25); border-radius: var(--radius-md); padding: 12px 18px; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <i class="fa-solid fa-shield-halved" style="color: var(--gold-light); font-size: 1.25rem;"></i>
+          <div>
+            <strong style="color: var(--gold-light); font-size: 0.95rem;">Election Administrator Live Audit Dashboard</strong>
+            <div style="font-size: 0.76rem; color: var(--text-secondary);">Real-time aggregated ballots and SEC/NGX compliance verification ledger.</div>
+          </div>
+        </div>
+        <button class="admin-btn" id="adminLockDashboardBtn" style="padding: 5px 12px; font-size: 0.78rem;">
+          <i class="fa-solid fa-lock"></i> Lock Dashboard
+        </button>
+      </div>
+
       <div class="results-stats-overview">
         <div class="result-stat-card">
           <div class="result-stat-icon gold"><i class="fa-solid fa-check-double"></i></div>
@@ -663,6 +801,13 @@
     });
 
     container.innerHTML = html;
+
+    const lockDashboardBtn = document.getElementById('adminLockDashboardBtn');
+    if (lockDashboardBtn) {
+      lockDashboardBtn.addEventListener('click', () => {
+        logoutAdmin();
+      });
+    }
   }
 
   // --- 7. Modal Handlers & Dialog Workflows ---
@@ -1066,6 +1211,13 @@
 
     function switchView(target) {
       playSound('click');
+      if (target === 'results' && !state.isAdmin) {
+        openAdminAuthModal(() => {
+          switchView('results');
+        });
+        return;
+      }
+
       state.activeView = target;
       if (target === 'ballot') {
         viewBallotBtn.classList.add('active');
@@ -1123,7 +1275,98 @@
     if (adminBtn && adminDialog) {
       adminBtn.addEventListener('click', () => {
         playSound('dialog');
-        adminDialog.showModal();
+        if (!state.isAdmin) {
+          openAdminAuthModal(() => {
+            adminDialog.showModal();
+          });
+        } else {
+          adminDialog.showModal();
+        }
+      });
+    }
+
+    // Admin Auth Dialog Event Listeners
+    const adminAuthSubmitBtn = document.getElementById('adminAuthSubmitBtn');
+    const adminPasscodeInput = document.getElementById('adminPasscodeInput');
+    const adminAuthForm = document.getElementById('adminAuthForm');
+    const togglePasscodeBtn = document.getElementById('toggleAdminPasscodeVisibility');
+    const adminAuthDialog = document.getElementById('adminAuthDialog');
+    const adminAuthFeedback = document.getElementById('adminAuthFeedback');
+
+    function handleAdminAuthSubmit() {
+      if (!adminPasscodeInput) return;
+      const entered = adminPasscodeInput.value.trim();
+      if (!entered) {
+        if (adminAuthFeedback) {
+          adminAuthFeedback.style.display = 'block';
+          adminAuthFeedback.style.background = 'rgba(231, 76, 60, 0.15)';
+          adminAuthFeedback.style.color = '#e74c3c';
+          adminAuthFeedback.textContent = 'Please enter the election administrator passcode.';
+        }
+        return;
+      }
+
+      const success = loginAdmin(entered);
+      if (success) {
+        if (adminAuthDialog) adminAuthDialog.close();
+        if (typeof pendingAdminCallback === 'function') {
+          const cb = pendingAdminCallback;
+          pendingAdminCallback = null;
+          cb();
+        }
+      } else {
+        if (adminAuthFeedback) {
+          adminAuthFeedback.style.display = 'block';
+          adminAuthFeedback.style.background = 'rgba(231, 76, 60, 0.15)';
+          adminAuthFeedback.style.color = '#e74c3c';
+          adminAuthFeedback.textContent = 'Invalid administrator passcode. Please try again.';
+        }
+        playSound('dialog');
+      }
+    }
+
+    if (adminAuthSubmitBtn) {
+      adminAuthSubmitBtn.addEventListener('click', handleAdminAuthSubmit);
+    }
+    if (adminAuthForm) {
+      adminAuthForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleAdminAuthSubmit();
+      });
+    }
+    if (adminPasscodeInput) {
+      adminPasscodeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleAdminAuthSubmit();
+        }
+      });
+    }
+
+    if (togglePasscodeBtn && adminPasscodeInput) {
+      togglePasscodeBtn.addEventListener('click', () => {
+        const isPassword = adminPasscodeInput.type === 'password';
+        adminPasscodeInput.type = isPassword ? 'text' : 'password';
+        togglePasscodeBtn.innerHTML = isPassword 
+          ? `<i class="fa-regular fa-eye-slash"></i>` 
+          : `<i class="fa-regular fa-eye"></i>`;
+      });
+    }
+
+    // Admin Logout Session Buttons
+    const logoutNavBtn = document.getElementById('adminLogoutSessionBtn');
+    const logoutDrawerBtn = document.getElementById('adminLogoutDrawerBtn');
+
+    if (logoutNavBtn) {
+      logoutNavBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        logoutAdmin();
+      });
+    }
+    if (logoutDrawerBtn) {
+      logoutDrawerBtn.addEventListener('click', () => {
+        if (adminDialog) adminDialog.close();
+        logoutAdmin();
       });
     }
 
@@ -1254,7 +1497,7 @@
     async function syncFromCloud() {
       if (!window.RAML_SUPABASE || !window.RAML_SUPABASE.isConfigured()) return;
       try {
-        const cloudTallies = await window.RAML_SUPABASE.fetchRemoteTallies();
+        const cloudTallies = await window.RAML_SUPABASE.fetchRemoteTallies(state.isAdmin ? state.adminPasscode : null);
         if (cloudTallies && Object.keys(cloudTallies).length > 0) {
           Object.entries(cloudTallies).forEach(([k, count]) => {
             state.candidateTally[k] = count;
@@ -1262,7 +1505,7 @@
           saveTally();
         }
 
-        const cloudVotes = await window.RAML_SUPABASE.fetchRemoteVotes();
+        const cloudVotes = await window.RAML_SUPABASE.fetchRemoteVotes(state.isAdmin ? state.adminPasscode : null);
         if (cloudVotes && Array.isArray(cloudVotes)) {
           cloudVotes.forEach(v => {
             if (v.voter_id === state.currentVoterId) {
@@ -1431,6 +1674,7 @@
   // --- 12. Application Bootstrap ---
   function init() {
     initTally();
+    updateAdminUI();
     updateVoterPill();
     renderCategoryTabs();
     renderVotingSections();

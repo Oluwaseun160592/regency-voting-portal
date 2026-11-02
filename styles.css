@@ -2183,3 +2183,136 @@ dialog::backdrop {
     width: 95vw !important;
   }
 }
+
+/* ==========================================================================
+   Confidential Balloting & Admin-Only Visibility Styles
+   ========================================================================== */
+
+/* Confidential Card Seal (Shown to public instead of live tallies) */
+.card-vote-confidential {
+  background: rgba(212, 175, 55, 0.05);
+  border: 1px dashed rgba(212, 175, 55, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.2rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.card-vote-confidential span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge-sealed {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--gold-light);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+/* Admin Active Session Pill in Navbar */
+.admin-session-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(184, 134, 11, 0.25));
+  border: 1px solid var(--gold-primary);
+  border-radius: var(--radius-full);
+  padding: 5px 12px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--gold-light);
+  letter-spacing: 0.3px;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.2);
+}
+
+.admin-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3ecf8e;
+  box-shadow: 0 0 8px #3ecf8e;
+  animation: adminPulse 2s infinite ease-in-out;
+}
+
+@keyframes adminPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+.admin-session-pill button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.admin-session-pill button:hover {
+  color: var(--crimson-accent);
+}
+
+/* Admin Verification Modal Notice Box */
+.admin-auth-notice {
+  text-align: center;
+  background: rgba(212, 175, 55, 0.06);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1rem;
+}
+
+/* Results Locked Placeholder Screen */
+.results-locked-screen {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  max-width: 680px;
+  margin: 2rem auto;
+  box-shadow: var(--shadow-card);
+}
+
+.results-locked-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px solid var(--gold-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  color: var(--gold-light);
+  margin: 0 auto 1.5rem;
+}
+
+.admin-standing-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  background: rgba(212, 175, 55, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+}

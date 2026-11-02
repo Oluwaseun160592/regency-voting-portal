@@ -27,8 +27,9 @@ This guide walks you through connecting your **Supabase Cloud Database** to the 
 > **What this does:**
 > - Creates `public.raml_votes` (enforcing 1 vote per person per category).
 > - Creates `public.raml_audit_logs` (blockchain-style ledger).
-> - Configures Row Level Security (RLS) policies allowing public voting.
-> - Enables Supabase Realtime broadcast so every phone and laptop updates instantly.
+> - **Confidential Voting Security**: Row Level Security (RLS) ensures the public can cast ballots, but **CANNOT view live votes or tallies**.
+> - Configures secure RPC functions (`get_admin_election_tallies` & `get_admin_audit_logs`) so **only verified administrators** (using Admin Passcode `RAML-ADMIN-2026`) can unlock and inspect live results.
+> - Enables Supabase Realtime broadcast protected by RLS.
 
 ---
 
