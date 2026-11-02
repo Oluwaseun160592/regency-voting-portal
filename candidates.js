@@ -88,13 +88,13 @@ const NOMINEES_ROSTER = [
   {
     id: "nominee-celestine-arowosola",
     name: "Celestine Arowosola",
-    role: "Registrar",
+    role: "Head, Registrar",
     department: "Registry & Shareholder Services",
     initials: "CA",
     badgeColor: "emerald",
     tagline: "Meticulous shareholder registry maintenance, entitlement processing, and corporate records.",
     tenure: "Professional Staff",
-    bio: "Celestine Arowosola manages Registry operations, ensuring accurate shareholder records, dividend verification, allotment administration, and prompt investor reconciliation.",
+    bio: "Celestine Arowosola serves as Head, Registrar, overseeing Registry operations, ensuring accurate shareholder records, dividend verification, allotment administration, and prompt investor reconciliation.",
     achievements: [
       "Maintains high integrity across all registrar files and shareholder registers.",
       "Resolves shareholder queries, address changes, and dividend reconciliations efficiently.",
@@ -120,13 +120,13 @@ const NOMINEES_ROSTER = [
   {
     id: "nominee-kayode-ibuowo",
     name: "Kayode Ibuowo",
-    role: "Compliance Officer",
+    role: "Compliance Officer/Operation Officer",
     department: "Compliance & Regulatory Affairs",
     initials: "KI",
     badgeColor: "blue",
-    tagline: "Vigilant regulatory monitoring, AML/KYC screening, and ethical standards enforcement.",
+    tagline: "Vigilant regulatory monitoring, operational diligence, AML/KYC screening, and ethical standards enforcement.",
     tenure: "Professional Staff",
-    bio: "Kayode Ibuowo serves as Compliance Officer, actively enforcing KYC/AML compliance, statutory filings, employee conduct codes, and ensuring that all transactions comply strictly with SEC and NGX guidelines.",
+    bio: "Kayode Ibuowo serves as Compliance Officer/Operation Officer, actively enforcing KYC/AML compliance, operational workflows, statutory filings, employee conduct codes, and ensuring that all transactions comply strictly with SEC and NGX guidelines.",
     achievements: [
       "Executes rigorous customer onboarding checks and institutional KYC validations.",
       "Assists in regulatory reporting, inspections, and monitoring capital market guidelines.",
