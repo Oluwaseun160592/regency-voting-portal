@@ -17,20 +17,25 @@
     STATUS: 'raml_portal_election_status_v1'
   };
 
+  // Secure SHA-256 hash for local administrator authentication
+  // Plaintext passcode is never exposed in client source code
+  const ADMIN_PASSCODE_HASH = 'a70f6babed3f453191838e8c4c368747fd64dc2df3c7b7758418483cf58feb17';
+
   const state = {
     activeCategory: 'all',
     searchQuery: '',
     activeView: 'ballot', // 'ballot' | 'results'
-    currentVoterId: localStorage.getItem(STORAGE_KEYS.VOTER_ID) || 'RAML-8821',
+    currentVoterId: localStorage.getItem(STORAGE_KEYS.VOTER_ID) || '',
     electionStatus: localStorage.getItem(STORAGE_KEYS.STATUS) || 'active', // 'active' | 'closed'
     soundEnabled: localStorage.getItem(STORAGE_KEYS.AUDIO) !== 'false',
     theme: localStorage.getItem(STORAGE_KEYS.THEME) || 'dark',
     isAdmin: sessionStorage.getItem('raml_admin_session') === 'true',
-    adminPasscode: localStorage.getItem('raml_admin_passcode') || 'RAML-ADMIN-2026',
+    adminPasscode: sessionStorage.getItem('raml_admin_passcode_active') || '',
     userVotes: {}, // { [categoryId]: { nomineeId, nomineeName, timestamp, ballotHash } }
-    candidateTally: {}, // { [nomineeId]: voteCount }
+    candidateTally: {}, // { [categoryId__nomineeId]: voteCount }
     auditLog: [],
-    selectedForVote: null // { categoryId, nomineeId }
+    selectedForVote: null, // { categoryId, nomineeId }
+    expandedCategoryIds: new Set(['staff-of-the-year']) // Category 1 expanded by default
   };
 
   let pendingAdminCallback = null;
@@ -46,12 +51,45 @@
     }
   }
 
-  function loginAdmin(passcode) {
+  async function verifyAdminPasscode(passcode) {
     if (!passcode) return false;
     const clean = passcode.trim();
-    if (clean === state.adminPasscode.trim()) {
+
+    // 1. If Supabase is connected, verify against Supabase RPC
+    if (window.RAML_SUPABASE && window.RAML_SUPABASE.isConfigured()) {
+      try {
+        const tallies = await window.RAML_SUPABASE.fetchRemoteTallies(clean);
+        if (tallies !== null) {
+          return true;
+        }
+      } catch (e) {
+        // Fall back to cryptographic hash check
+      }
+    }
+
+    // 2. Cryptographic SHA-256 verification (no plaintext password in frontend)
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(clean);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashHex = Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      return hashHex === ADMIN_PASSCODE_HASH;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  async function loginAdmin(passcode) {
+    if (!passcode) return false;
+    const clean = passcode.trim();
+    const isValid = await verifyAdminPasscode(clean);
+    if (isValid) {
       state.isAdmin = true;
+      state.adminPasscode = clean;
       sessionStorage.setItem('raml_admin_session', 'true');
+      sessionStorage.setItem('raml_admin_passcode_active', clean);
       updateAdminUI();
       renderCategoryTabs();
       renderVotingSections();
@@ -69,7 +107,9 @@
 
   function logoutAdmin() {
     state.isAdmin = false;
+    state.adminPasscode = '';
     sessionStorage.removeItem('raml_admin_session');
+    sessionStorage.removeItem('raml_admin_passcode_active');
     updateAdminUI();
     if (state.activeView === 'results') {
       switchView('ballot');
@@ -98,23 +138,27 @@
     }
   }
 
-  // Load or Seed Candidate Tally
+  // Load Authentic Candidate Tally (No fake seeded baseline votes)
+  function initZeroTally() {
+    state.candidateTally = {};
+    window.VOTING_DATA.categories.forEach(cat => {
+      cat.nominees.forEach(nom => {
+        state.candidateTally[`${cat.id}__${nom.id}`] = 0;
+      });
+    });
+    saveTally();
+  }
+
   function initTally() {
     const savedTally = localStorage.getItem(STORAGE_KEYS.TALLY);
     if (savedTally) {
       try {
         state.candidateTally = JSON.parse(savedTally);
-        // Reseed if older version without composite category keys
-        if (!state.candidateTally['staff-of-the-year__nominee-ogidi-omolola']) {
-          seedDefaultTally();
-          state.userVotes = {};
-          saveVotes();
-        }
       } catch (e) {
-        seedDefaultTally();
+        initZeroTally();
       }
     } else {
-      seedDefaultTally();
+      initZeroTally();
     }
 
     loadVotesForCurrentVoter();
@@ -158,16 +202,7 @@
   }
 
   function seedDefaultTally() {
-    state.candidateTally = {};
-    window.VOTING_DATA.categories.forEach(cat => {
-      cat.nominees.forEach((nom, idx) => {
-        // Seed unique, distributed baseline votes per category and nominee
-        const variance = Math.abs(Math.sin(cat.number * 4.3 + (idx + 1) * 7.1));
-        const baseline = Math.floor(variance * 65) + 18;
-        state.candidateTally[`${cat.id}__${nom.id}`] = baseline;
-      });
-    });
-    saveTally();
+    initZeroTally();
   }
 
   function saveTally() {
@@ -380,9 +415,19 @@
         quickSelect.dataset.hasListener = 'true';
         quickSelect.addEventListener('change', (e) => {
           playSound('click');
-          state.activeCategory = e.target.value;
+          const catId = e.target.value;
+          state.activeCategory = catId;
+          if (catId !== 'all') {
+            state.expandedCategoryIds.add(catId);
+          }
           renderCategoryTabs();
           renderVotingSections();
+          if (catId !== 'all') {
+            setTimeout(() => {
+              const targetEl = document.getElementById(`category-accordion-${catId}`);
+              if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 60);
+          }
         });
       }
     }
@@ -417,9 +462,19 @@
     container.querySelectorAll('.category-tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         playSound('click');
-        state.activeCategory = btn.dataset.catId;
+        const catId = btn.dataset.catId;
+        state.activeCategory = catId;
+        if (catId !== 'all') {
+          state.expandedCategoryIds.add(catId);
+        }
         renderCategoryTabs();
         renderVotingSections();
+        if (catId !== 'all') {
+          setTimeout(() => {
+            const targetEl = document.getElementById(`category-accordion-${catId}`);
+            if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 60);
+        }
       });
     });
 
@@ -453,7 +508,7 @@
     }
   }
 
-  // 6.3 Render Voting Sections & Nominee Cards
+  // 6.3 Render Voting Sections: Accordion Dropdown with Compact Staff Cards
   function renderVotingSections() {
     const container = document.getElementById('votingMainContainer');
     if (!container) return;
@@ -472,7 +527,7 @@
       return;
     }
 
-    let html = '';
+    let html = '<div class="category-accordion-list">';
 
     renderedCats.forEach(cat => {
       // Filter candidates by search if provided
@@ -490,161 +545,158 @@
 
       const userVoteInCat = state.userVotes[cat.id];
       const isCatVoted = !!userVoteInCat;
+      const isOpen = state.expandedCategoryIds.has(cat.id) || query.length > 0;
 
-      // Calculate total votes in this category for bar width
+      // Calculate total votes in this category
       const totalCatVotes = cat.nominees.reduce((acc, nom) => acc + (state.candidateTally[`${cat.id}__${nom.id}`] || 0), 0);
 
       html += `
-        <section class="category-section-block" id="category-block-${cat.id}">
-          <div class="category-section-header">
-            <div class="category-header-main">
-              <h2>
-                <i class="${cat.icon}" style="color: var(--gold-primary);"></i>
-                Category ${cat.number}: ${cat.name}
-              </h2>
-              <p>${cat.description}</p>
+        <article class="category-accordion-item ${isOpen ? 'open' : ''} ${isCatVoted ? 'voted-category' : ''}" id="category-accordion-${cat.id}" data-cat-id="${cat.id}">
+          <!-- Clickable Header: Drops down the staff names -->
+          <button class="category-accordion-header" type="button" aria-expanded="${isOpen}" data-cat-id="${cat.id}" title="Click to ${isOpen ? 'collapse' : 'view and vote for'} staff nominees">
+            <div class="cat-header-left">
+              <div class="cat-icon-badge">
+                <i class="${cat.icon}"></i>
+              </div>
+              <div class="cat-title-wrap">
+                <div class="cat-number-tag">Category ${cat.number} of 15</div>
+                <h3 class="cat-title">${cat.name}</h3>
+                <div class="cat-short-desc">${cat.description}</div>
+              </div>
             </div>
-            <div class="category-criteria-box">
-              <i class="fa-solid fa-scale-balanced"></i>
-              <span><strong>Key Criteria:</strong> ${cat.criteria}</span>
+            <div class="cat-header-right">
+              ${isCatVoted ? `
+                <span class="cat-voted-pill" title="You voted for ${userVoteInCat.nomineeName}">
+                  <i class="fa-solid fa-circle-check"></i> Voted: <strong>${userVoteInCat.nomineeName.split(',')[0]}</strong>
+                </span>
+              ` : `
+                <span class="cat-pending-pill">
+                  <i class="fa-solid fa-check-to-slot"></i> ${nominees.length} Staff Nominees
+                </span>
+              `}
+              <div class="cat-chevron" aria-hidden="true">
+                <i class="fa-solid fa-chevron-down"></i>
+              </div>
             </div>
-          </div>
+          </button>
 
-          <div class="nominees-grid">
-            ${nominees.map(nom => {
-              const currentTally = state.candidateTally[`${cat.id}__${nom.id}`] || 0;
-              const percent = totalCatVotes > 0 ? Math.round((currentTally / totalCatVotes) * 100) : 0;
-              const existingVoteForNom = getVotedCategoryForNominee(nom.id);
-              const isVotedForThisInThisCat = isCatVoted && userVoteInCat.nomineeId === nom.id;
-              const isVotedForThisInOtherCat = existingVoteForNom && existingVoteForNom.categoryId !== cat.id;
+          <!-- Dropdown Body: Staff Nominees -->
+          <div class="category-accordion-body" style="display: ${isOpen ? 'block' : 'none'};">
+            <div class="category-criteria-ribbon">
+              <i class="fa-solid fa-scale-balanced" style="color: var(--gold-primary);"></i>
+              <span><strong>Official Award Criteria:</strong> ${cat.criteria}</span>
+            </div>
 
-              return `
-                <article class="nominee-card ${isVotedForThisInThisCat ? 'voted-for' : ''} ${isVotedForThisInOtherCat ? 'locked-nominee' : ''}" id="card-${cat.id}-${nom.id}">
-                  <div class="nominee-media-frame">
-                    <div class="nominee-badges-bar">
-                      <span class="nominee-dept-badge">${nom.department}</span>
-                      ${isVotedForThisInThisCat 
-                        ? `<span class="nominee-voted-badge"><i class="fa-solid fa-circle-check"></i> Your Vote</span>`
-                        : (isVotedForThisInOtherCat
-                            ? `<span class="nominee-locked-badge" title="Already selected in Category ${existingVoteForNom.category.number}: ${existingVoteForNom.category.name}"><i class="fa-solid fa-lock"></i> Voted in Cat ${existingVoteForNom.category.number}</span>`
-                            : `<span class="nominee-dept-badge" style="border-color: rgba(255,255,255,0.15);">${nom.tenure}</span>`
-                          )
-                      }
-                    </div>
-                    <div class="nominee-crest-badge ${nom.badgeColor || 'gold'}">
-                      <span class="crest-initials-text">${nom.initials}</span>
-                    </div>
-                  </div>
+            <div class="nominees-compact-grid">
+              ${nominees.map(nom => {
+                const currentTally = state.candidateTally[`${cat.id}__${nom.id}`] || 0;
+                const percent = totalCatVotes > 0 ? Math.round((currentTally / totalCatVotes) * 100) : 0;
+                const existingVoteForNom = getVotedCategoryForNominee(nom.id);
+                const isVotedForThisInThisCat = isCatVoted && userVoteInCat.nomineeId === nom.id;
+                const isVotedForThisInOtherCat = existingVoteForNom && existingVoteForNom.categoryId !== cat.id;
 
-                  <div class="nominee-card-body">
-                    <h3 class="nominee-name">${nom.name}</h3>
-                    <div class="nominee-role">${nom.role}</div>
-                    <p class="nominee-tagline">${nom.tagline}</p>
-
-                    <!-- Award Category & Criteria under each nominee -->
-                    <div class="nominee-award-category-banner">
-                      <div class="award-badge">
-                        <i class="${cat.icon}"></i>
-                        <span>Category ${cat.number}: ${cat.name}</span>
+                return `
+                  <div class="compact-staff-card ${isVotedForThisInThisCat ? 'voted-for' : ''} ${isVotedForThisInOtherCat ? 'locked-nominee' : ''}" id="card-${cat.id}-${nom.id}">
+                    <div class="staff-info-col">
+                      <div class="staff-avatar-thumb ${nom.badgeColor || 'gold'}">
+                        ${nom.initials}
                       </div>
-                      <p class="award-desc">${cat.description}</p>
-                    </div>
-
-                    <div class="nominee-metrics-row">
-                      <div class="metric-chip">
-                        <span class="metric-value">Verified</span>
-                        <span class="metric-label">Status</span>
-                      </div>
-                      <div class="metric-chip">
-                        <span class="metric-value">${nom.tenure}</span>
-                        <span class="metric-label">Cadre</span>
-                      </div>
-                      <div class="metric-chip">
-                        <span class="metric-value">SEC/NGX</span>
-                        <span class="metric-label">Compliant</span>
+                      <div class="staff-text-meta">
+                        <div class="staff-name" title="${nom.name}">${nom.name}</div>
+                        <div class="staff-role-dept" title="${nom.role} • ${nom.department}">
+                          ${nom.role} • ${nom.department}
+                        </div>
+                        <div class="staff-tag-row">
+                          <span class="staff-tenure-badge">${nom.tenure}</span>
+                          ${isVotedForThisInThisCat ? `
+                            <span class="staff-voted-badge"><i class="fa-solid fa-circle-check"></i> Your Vote</span>
+                          ` : (isVotedForThisInOtherCat ? `
+                            <span class="staff-locked-badge" title="Already selected in Category ${existingVoteForNom.category.number}"><i class="fa-solid fa-lock"></i> Voted in Cat ${existingVoteForNom.category.number}</span>
+                          ` : '')}
+                          ${state.isAdmin ? `
+                            <span style="font-size: 0.68rem; color: var(--gold-light); font-weight: 700; margin-left: auto;">
+                              ${currentTally} votes (${percent}%)
+                            </span>
+                          ` : ''}
+                        </div>
                       </div>
                     </div>
 
-                    ${state.isAdmin ? `
-                      <div class="card-vote-standing">
-                        <span><i class="fa-solid fa-chart-simple" style="color: var(--gold-light);"></i> Category Standing <span class="admin-standing-tag"><i class="fa-solid fa-shield-halved"></i> Admin</span></span>
-                        <strong style="color: var(--gold-light);">${currentTally} Votes (${percent}%)</strong>
-                      </div>
-                      <div class="card-vote-bar-track">
-                        <div class="card-vote-bar-fill" style="width: ${percent}%;"></div>
-                      </div>
-                    ` : `
-                      <div class="card-vote-confidential">
-                        <span><i class="fa-solid fa-shield-halved" style="color: var(--gold-light);"></i> Confidential Ballot</span>
-                        <span class="badge-sealed"><i class="fa-solid fa-lock" style="font-size: 0.65rem; margin-right: 4px;"></i> Votes Sealed</span>
-                      </div>
-                    `}
-
-                    <div class="nominee-actions-group" style="margin-top: 1.4rem;">
-                      <button class="btn-secondary view-bio-btn" data-nominee-id="${nom.id}" data-cat-id="${cat.id}">
+                    <div class="staff-actions-col">
+                      <button type="button" class="btn-compact-bio view-bio-btn" data-nominee-id="${nom.id}" data-cat-id="${cat.id}" title="Read biography and milestones">
                         <i class="fa-regular fa-id-card"></i>
-                        <span>Bio & Dossier</span>
+                        <span>Bio</span>
                       </button>
 
-                      ${isVotedForThisInThisCat 
-                        ? `
-                          <button class="btn-voted-status view-receipt-btn" data-cat-id="${cat.id}">
-                            <i class="fa-solid fa-receipt"></i>
-                            <span>View Ballot</span>
-                          </button>
-                        `
-                        : (isVotedForThisInOtherCat
-                            ? `
-                              <button class="btn-disabled-vote" disabled title="You have already cast your vote for ${nom.name} in Category ${existingVoteForNom.category.number} (${existingVoteForNom.category.shortName}). Each nominee can only be voted for in one category.">
-                                <i class="fa-solid fa-lock"></i>
-                                <span>Voted in Cat ${existingVoteForNom.category.number}</span>
-                              </button>
-                            `
-                            : (isCatVoted
-                                ? `
-                                  <button class="btn-secondary-vote vote-action-btn" data-cat-id="${cat.id}" data-nominee-id="${nom.id}" ${state.electionStatus === 'closed' ? 'disabled' : ''} title="Change your vote in this category to ${nom.name}">
-                                    <i class="fa-solid fa-arrows-rotate"></i>
-                                    <span>Change Vote</span>
-                                  </button>
-                                `
-                                : `
-                                  <button class="btn-primary-vote vote-action-btn" data-cat-id="${cat.id}" data-nominee-id="${nom.id}" ${state.electionStatus === 'closed' ? 'disabled' : ''}>
-                                    <i class="fa-solid fa-check-to-slot"></i>
-                                    <span>Vote Now</span>
-                                  </button>
-                                `
-                              )
-                          )
-                      }
+                      ${isVotedForThisInThisCat ? `
+                        <button type="button" class="btn-compact-voted view-receipt-btn" data-cat-id="${cat.id}" title="View digital ballot slip">
+                          <i class="fa-solid fa-receipt"></i>
+                          <span>Ballot</span>
+                        </button>
+                      ` : (isVotedForThisInOtherCat ? `
+                        <button type="button" class="btn-compact-locked" disabled title="Already voted for ${nom.name} in Category ${existingVoteForNom.category.number}">
+                          <i class="fa-solid fa-lock"></i>
+                          <span>Locked</span>
+                        </button>
+                      ` : (isCatVoted ? `
+                        <button type="button" class="btn-compact-vote vote-action-btn" data-cat-id="${cat.id}" data-nominee-id="${nom.id}" ${state.electionStatus === 'closed' ? 'disabled' : ''} title="Change vote in this category to ${nom.name}">
+                          <i class="fa-solid fa-arrows-rotate"></i>
+                          <span>Change</span>
+                        </button>
+                      ` : `
+                        <button type="button" class="btn-compact-vote vote-action-btn" data-cat-id="${cat.id}" data-nominee-id="${nom.id}" ${state.electionStatus === 'closed' ? 'disabled' : ''} title="Vote for ${nom.name}">
+                          <i class="fa-solid fa-check-to-slot"></i>
+                          <span>Vote</span>
+                        </button>
+                      `))}
                     </div>
                   </div>
-                </article>
-              `;
-            }).join('')}
+                `;
+              }).join('')}
+            </div>
           </div>
-        </section>
+        </article>
       `;
     });
 
+    html += '</div>';
     container.innerHTML = html;
+
+    // Attach listeners for Accordion Dropdown Click
+    container.querySelectorAll('.category-accordion-header').forEach(header => {
+      header.addEventListener('click', (e) => {
+        if (e.target.closest('button:not(.category-accordion-header)')) return;
+        playSound('click');
+        const catId = header.dataset.catId;
+        if (state.expandedCategoryIds.has(catId)) {
+          state.expandedCategoryIds.delete(catId);
+        } else {
+          state.expandedCategoryIds.add(catId);
+        }
+        renderVotingSections();
+      });
+    });
 
     // Attach listeners for Card Actions
     container.querySelectorAll('.view-bio-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         playSound('dialog');
         openBioModal(btn.dataset.nomineeId, btn.dataset.catId);
       });
     });
 
     container.querySelectorAll('.vote-action-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         playSound('dialog');
         openVoteConfirmation(btn.dataset.catId, btn.dataset.nomineeId);
       });
     });
 
     container.querySelectorAll('.view-receipt-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         playSound('dialog');
         openReceiptModal(btn.dataset.catId);
       });
@@ -1061,7 +1113,9 @@
   function updateVoterPill() {
     const pillText = document.getElementById('voterIdentityDisplay');
     if (pillText) {
-      pillText.textContent = `Voter: ${state.currentVoterId}`;
+      pillText.textContent = state.currentVoterId 
+        ? `Voter: ${state.currentVoterId}` 
+        : 'Voter Authentication';
     }
   }
 
@@ -1093,40 +1147,27 @@
     setInterval(update, 1000);
   }
 
-  // --- 9. Admin & Demo Operations ---
+  // --- 9. Election Governance & Committee Operations ---
   function setupAdminControls() {
-    const btnSimulate = document.getElementById('adminSimulateVotesBtn');
-    const btnReset = document.getElementById('adminResetAllBtn');
     const btnExport = document.getElementById('adminExportCsvBtn');
     const btnToggleStatus = document.getElementById('adminToggleStatusBtn');
+    const btnOpenSupabase = document.getElementById('adminOpenSupabaseConfigBtn');
 
-    if (btnSimulate) {
-      btnSimulate.addEventListener('click', () => {
-        playSound('click');
-        window.VOTING_DATA.categories.forEach(cat => {
-          cat.nominees.forEach(nom => {
-            const key = `${cat.id}__${nom.id}`;
-            state.candidateTally[key] = (state.candidateTally[key] || 0) + Math.floor(Math.random() * 15 + 4);
-          });
-        });
-        saveTally();
-        renderVotingSections();
-        renderLiveResults();
-        showToast('Injected simulated audited ballots across all 15 categories!');
-      });
-    }
-
-    if (btnReset) {
-      btnReset.addEventListener('click', () => {
-        if (confirm('Reset your local ballot selections and restore default sample counts across all 15 categories?')) {
-          playSound('click');
-          state.userVotes = {};
-          saveVotes();
-          seedDefaultTally();
-          renderCategoryTabs();
-          renderVotingSections();
-          renderLiveResults();
-          showToast('Portal state has been reset.');
+    if (btnOpenSupabase) {
+      btnOpenSupabase.addEventListener('click', () => {
+        playSound('dialog');
+        const adminDialog = document.getElementById('adminDialog');
+        if (adminDialog) adminDialog.close();
+        const configDialog = document.getElementById('supabaseConfigDialog');
+        if (configDialog) {
+          if (window.RAML_SUPABASE) {
+            const cfg = window.RAML_SUPABASE.getConfig();
+            const urlInput = document.getElementById('supabaseUrlInput');
+            const keyInput = document.getElementById('supabaseKeyInput');
+            if (urlInput) urlInput.value = cfg.url || '';
+            if (keyInput) keyInput.value = cfg.anonKey || '';
+          }
+          configDialog.showModal();
         }
       });
     }
@@ -1149,7 +1190,7 @@
         a.download = `Regency_Assets_Management_15_Categories_Results_${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast('Audited 15-category voting tally exported to CSV!');
+        showToast('Official 15-category voting audit ledger exported to CSV!');
       });
     }
 
@@ -1293,7 +1334,7 @@
     const adminAuthDialog = document.getElementById('adminAuthDialog');
     const adminAuthFeedback = document.getElementById('adminAuthFeedback');
 
-    function handleAdminAuthSubmit() {
+    async function handleAdminAuthSubmit() {
       if (!adminPasscodeInput) return;
       const entered = adminPasscodeInput.value.trim();
       if (!entered) {
@@ -1306,7 +1347,14 @@
         return;
       }
 
-      const success = loginAdmin(entered);
+      if (adminAuthFeedback) {
+        adminAuthFeedback.style.display = 'block';
+        adminAuthFeedback.style.background = 'rgba(201, 168, 76, 0.15)';
+        adminAuthFeedback.style.color = 'var(--gold-light)';
+        adminAuthFeedback.textContent = 'Verifying administrative credentials...';
+      }
+
+      const success = await loginAdmin(entered);
       if (success) {
         if (adminAuthDialog) adminAuthDialog.close();
         if (typeof pendingAdminCallback === 'function') {
@@ -1392,18 +1440,7 @@
       });
     });
 
-    // Preset Voter ID selector chips
-    document.querySelectorAll('.preset-voter-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        playSound('click');
-        const id = chip.dataset.voterId;
-        switchVoter(id);
-        const voterDlg = document.getElementById('voterLoginDialog');
-        if (voterDlg) voterDlg.close();
-      });
-    });
-
-    // Custom Voter ID Input
+    // Custom Staff Voter ID Input
     const customVoterBtn = document.getElementById('customVoterSubmitBtn');
     const customVoterInput = document.getElementById('customVoterIdInput');
     if (customVoterBtn && customVoterInput) {

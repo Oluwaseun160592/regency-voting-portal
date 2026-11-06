@@ -254,15 +254,7 @@ const VOTING_DATA = {
   regulatoryInfo: "Trading Licence Holder of NGX Ltd & Dealing Member of NASD | SEC Regulated",
   votingDeadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000).toISOString(),
   categories: CATEGORIES_DATA,
-  nomineesRoster: NOMINEES_ROSTER,
-  verifiedVoterRoster: [
-    { id: "RAML-1001", name: "Executive Office - Board Representative", department: "Executive Board" },
-    { id: "RAML-2045", name: "Corporate Finance Staff Voter", department: "Investment Banking" },
-    { id: "RAML-3108", name: "Institutional Dealing Desk Member", department: "Securities Trading" },
-    { id: "RAML-4092", name: "Private Wealth Advisory Voter", department: "Asset Management" },
-    { id: "RAML-5520", name: "Audit & Risk Compliance Voter", department: "Internal Control" },
-    { id: "RAML-8821", name: "General Staff & Associate Voter", department: "Operations & IT" }
-  ]
+  nomineesRoster: NOMINEES_ROSTER
 };
 
 // Export to window

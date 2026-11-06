@@ -110,9 +110,10 @@ GROUP BY category_id, nominee_id;
 -- 7. SECURE RPC FUNCTIONS FOR AUTHORIZED ADMIN ACCESS
 -- Passcode-protected Security Definer functions allow the verified Admin
 -- to retrieve live totals and audit logs even when connecting with the client anon key.
-
--- Default Election Admin Passcode: 'RAML-ADMIN-2026'
--- (To change, replace 'RAML-ADMIN-2026' below with your custom passkey)
+--
+-- SECURITY NOTICE:
+-- Replace 'RAML-ADMIN-2026' with your confidential, organization-approved master admin passcode
+-- prior to running this in your Supabase production SQL editor.
 CREATE OR REPLACE FUNCTION public.get_admin_election_tallies(admin_passcode TEXT)
 RETURNS TABLE (
     category_id TEXT,
